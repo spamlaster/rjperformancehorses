@@ -458,6 +458,49 @@ export async function updateInstructorAvailability(id: string, updates: Partial<
   return true
 }
 
+export async function createInstructorAvailability(availability: Omit<InstructorAvailability, 'id' | 'createdAt' | 'updatedAt'>): Promise<InstructorAvailability | null> {
+  const { data, error } = await supabase
+    .from('instructor_availability')
+    .insert({
+      id: `ia-${Date.now()}`,
+      day_of_week: availability.dayOfWeek,
+      start_time: availability.startTime,
+      end_time: availability.endTime,
+      active: availability.active ?? true,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating instructor availability:', error)
+    return null
+  }
+
+  return {
+    id: data.id,
+    dayOfWeek: data.day_of_week,
+    startTime: data.start_time,
+    endTime: data.end_time,
+    active: data.active,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  }
+}
+
+export async function deleteInstructorAvailability(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('instructor_availability')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error deleting instructor availability:', error)
+    return false
+  }
+
+  return true
+}
+
 export async function fetchHorseRecurringAvailability(): Promise<HorseRecurringAvailability[]> {
   const { data, error } = await supabase
     .from('horse_recurring_availability')
@@ -494,6 +537,51 @@ export async function updateHorseRecurringAvailability(id: string, updates: Part
 
   if (error) {
     console.error('Error updating horse recurring availability:', error)
+    return false
+  }
+
+  return true
+}
+
+export async function createHorseRecurringAvailability(availability: Omit<HorseRecurringAvailability, 'id' | 'createdAt' | 'updatedAt'>): Promise<HorseRecurringAvailability | null> {
+  const { data, error } = await supabase
+    .from('horse_recurring_availability')
+    .insert({
+      id: `hra-${Date.now()}`,
+      horse_id: availability.horseId,
+      day_of_week: availability.dayOfWeek,
+      start_time: availability.startTime,
+      end_time: availability.endTime,
+      active: availability.active ?? true,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating horse recurring availability:', error)
+    return null
+  }
+
+  return {
+    id: data.id,
+    horseId: data.horse_id,
+    dayOfWeek: data.day_of_week,
+    startTime: data.start_time,
+    endTime: data.end_time,
+    active: data.active,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  }
+}
+
+export async function deleteHorseRecurringAvailability(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('horse_recurring_availability')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error deleting horse recurring availability:', error)
     return false
   }
 

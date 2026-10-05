@@ -238,6 +238,29 @@ export const useAdminStore = defineStore('admin', () => {
     return false
   }
 
+  async function addInstructorAvailability(availability: Omit<InstructorAvailability, 'id' | 'createdAt' | 'updatedAt'>) {
+    const newAvailability = await supabaseService.createInstructorAvailability(availability)
+    if (newAvailability) {
+      instructorAvailability.value.push(newAvailability)
+      return newAvailability
+    }
+    error.value = 'Failed to create instructor availability'
+    return null
+  }
+
+  async function removeInstructorAvailability(id: string) {
+    const success = await supabaseService.deleteInstructorAvailability(id)
+    if (success) {
+      const index = instructorAvailability.value.findIndex(a => a.id === id)
+      if (index !== -1) {
+        instructorAvailability.value.splice(index, 1)
+      }
+      return true
+    }
+    error.value = 'Failed to delete instructor availability'
+    return false
+  }
+
   async function updateHorseAvailabilityLocal(id: string, updates: Partial<HorseRecurringAvailability>) {
     const success = await supabaseService.updateHorseRecurringAvailability(id, updates)
     if (success) {
@@ -252,6 +275,29 @@ export const useAdminStore = defineStore('admin', () => {
       return true
     }
     error.value = 'Failed to update horse availability'
+    return false
+  }
+
+  async function addHorseRecurringAvailability(availability: Omit<HorseRecurringAvailability, 'id' | 'createdAt' | 'updatedAt'>) {
+    const newAvailability = await supabaseService.createHorseRecurringAvailability(availability)
+    if (newAvailability) {
+      horseRecurringAvailability.value.push(newAvailability)
+      return newAvailability
+    }
+    error.value = 'Failed to create horse availability'
+    return null
+  }
+
+  async function removeHorseRecurringAvailability(id: string) {
+    const success = await supabaseService.deleteHorseRecurringAvailability(id)
+    if (success) {
+      const index = horseRecurringAvailability.value.findIndex(a => a.id === id)
+      if (index !== -1) {
+        horseRecurringAvailability.value.splice(index, 1)
+      }
+      return true
+    }
+    error.value = 'Failed to delete horse availability'
     return false
   }
 
@@ -319,7 +365,11 @@ export const useAdminStore = defineStore('admin', () => {
 
     // Availability operations
     updateInstructorAvailabilityLocal,
+    addInstructorAvailability,
+    removeInstructorAvailability,
     updateHorseAvailabilityLocal,
+    addHorseRecurringAvailability,
+    removeHorseRecurringAvailability,
     addBlockedTime,
     deleteBlockedTime,
   }
