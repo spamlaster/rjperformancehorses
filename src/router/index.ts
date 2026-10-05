@@ -108,35 +108,22 @@ const router = createRouter({
   },
 })
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach((to, from) => {
   const authStore = useAuthStore()
 
   if (to.meta.requiresAuth) {
     // Check if user is authenticated AND is an admin
     if (authStore.isAuthenticated && authStore.isAdmin) {
-      next()
-    } else if (authStore.isLoading) {
-      // Still checking auth state, wait a bit and try again
-      setTimeout(() => {
-        if (authStore.isAuthenticated && authStore.isAdmin) {
-          next()
-        } else {
-          next({
-            path: '/admin/login',
-            query: { redirect: to.fullPath },
-          })
-        }
-      }, 100)
-    } else {
-      // Not authenticated or not admin
-      next({
-        path: '/admin/login',
-        query: { redirect: to.fullPath },
-      })
+      return true
     }
-  } else {
-    next()
+    // Not authenticated or not admin - redirect to login
+    return {
+      path: '/admin/login',
+      query: { redirect: to.fullPath },
+    }
   }
+  // Public route - allow navigation
+  return true
 })
 
 export default router
