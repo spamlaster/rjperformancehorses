@@ -1,0 +1,129 @@
+@import './variables.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Utility classes */
+.container-narrow {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-lg);
+}
+
+.container-wide {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--spacing-lg);
+}
+
+/* Button utilities */
+.btn-primary {
+  @apply bg-accent-gold hover:bg-warm-gold text-text-dark font-medium py-2 px-4 rounded-md transition-colors duration-200;
+}
+
+.btn-secondary {
+  @apply bg-white border border-border-light text-text-dark hover:bg-gray-100 font-medium py-2 px-4 rounded-md transition-colors duration-200;
+}
+
+.btn-dark {
+  @apply bg-dark-brown hover:bg-text-dark text-white font-medium py-2 px-4 rounded-md transition-colors duration-200;
+}
+
+.btn-small {
+  @apply py-1 px-3 text-sm;
+}
+
+.btn-large {
+  @apply py-3 px-6 text-lg;
+}
+
+/* Card utilities */
+.card {
+  @apply bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200;
+}
+
+.card-padding {
+  @apply p-6;
+}
+
+/* Form utilities */
+.form-group {
+  @apply mb-4;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-text-dark mb-2;
+}
+
+.form-input {
+  @apply w-full px-3 py-2 border border-border-light rounded-md focus:outline-none focus:ring-2 focus:ring-accent-gold focus:border-transparent;
+}
+
+.form-input:disabled {
+  @apply bg-gray-100 cursor-not-allowed;
+}
+
+.form-select {
+  @apply w-full px-3 py-2 border border-border-light rounded-md focus:outline-none focus:ring-2 focus:ring-accent-gold focus:border-transparent;
+}
+
+.form-textarea {
+  @apply w-full px-3 py-2 border border-border-light rounded-md focus:outline-none focus:ring-2 focus:ring-accent-gold focus:border-transparent;
+}
+
+/* Badge utilities */
+.badge {
+  @apply inline-block px-3 py-1 rounded-full text-sm font-medium;
+}
+
+.badge-success {
+  @apply bg-green-100 text-green-800;
+}
+
+.badge-warning {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.badge-error {
+  @apply bg-red-100 text-red-800;
+}
+
+.badge-info {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.badge-pending {
+  @apply bg-orange-100 text-orange-800;
+}
+
+/* Text utilities */
+.text-muted {
+  @apply text-gray-600;
+}
+
+.text-small {
+  @apply text-sm;
+}
+
+.text-large {
+  @apply text-lg;
+}
+
+/* Responsive spacing */
+@media (max-width: 768px) {
+  .container-narrow {
+    padding: 0 var(--spacing-md);
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+  }
+}

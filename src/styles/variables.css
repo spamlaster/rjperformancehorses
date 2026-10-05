@@ -1,0 +1,120 @@
+:root {
+  /* Colors */
+  --color-cream: #F5F1ED;
+  --color-dark-brown: #5C4033;
+  --color-warm-gold: #D4A574;
+  --color-light-brown: #8B6F47;
+  --color-text-dark: #3D2817;
+  --color-border-light: #E8DCC8;
+  --color-accent-gold: #D4A574;
+  --color-success: #6B8E23;
+  --color-warning: #CD7F32;
+  --color-error: #A0522D;
+  --color-white: #FFFFFF;
+  --color-gray-50: #F9FAFB;
+  --color-gray-100: #F3F4F6;
+  --color-gray-200: #E5E7EB;
+  --color-gray-300: #D1D5DB;
+  --color-gray-400: #9CA3AF;
+  --color-gray-500: #6B7280;
+  --color-gray-600: #4B5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1F2937;
+  --color-gray-900: #111827;
+
+  /* Typography */
+  --font-serif: 'Georgia', 'Garamond', serif;
+  --font-sans: 'Segoe UI', 'Roboto', sans-serif;
+  --font-heading: var(--font-serif);
+  --font-body: var(--font-sans);
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 300ms ease-in-out;
+  --transition-slow: 500ms ease-in-out;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-text-dark);
+  font-family: var(--font-body);
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+h2 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+h3 {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+h4 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+p {
+  margin-bottom: 1rem;
+}
+
+a {
+  color: var(--color-accent-gold);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-dark-brown);
+}
+
+button {
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+
+input, select, textarea {
+  font-family: var(--font-sans);
+}
