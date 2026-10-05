@@ -16,6 +16,7 @@ RETURNS TABLE (
 ) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_lesson_duration_minutes INT;
+  v_required_horse_count INT;
   v_day_of_week INT;
   v_booking_interval_minutes INT := 30;
   v_start_time TIME;
@@ -25,7 +26,7 @@ DECLARE
   v_slot_start_ts TIMESTAMP;
   v_slot_end_ts TIMESTAMP;
   v_instructor_blocked BOOLEAN;
-  v_horse_available BOOLEAN;
+  v_available_horse_count INT;
   v_eligible_horse_exists BOOLEAN;
 BEGIN
   -- Validate inputs
@@ -38,8 +39,8 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Get lesson duration and verify lesson type is active
-  SELECT duration_minutes INTO v_lesson_duration_minutes
+  -- Get lesson duration, required horse count, and verify lesson type is active
+  SELECT duration_minutes, required_horse_count INTO v_lesson_duration_minutes, v_required_horse_count
   FROM lesson_types
   WHERE id = p_lesson_type_id AND active = TRUE;
 
@@ -48,10 +49,15 @@ BEGIN
     RETURN;
   END IF;
 
+  -- Default to 1 horse if required_horse_count not set (for backward compatibility)
+  IF v_required_horse_count IS NULL THEN
+    v_required_horse_count := 1;
+  END IF;
+
   -- Get day of week (0=Sunday, 1=Monday, ..., 6=Saturday)
   v_day_of_week := EXTRACT(DOW FROM p_date)::INT;
 
-  -- Check if any eligible horses exist with recurring availability
+  -- Check if enough eligible horses exist with recurring availability
   SELECT EXISTS(
     SELECT 1
     FROM horses h
@@ -63,10 +69,11 @@ BEGIN
       AND h.deleted_at IS NULL
       AND hra.day_of_week = v_day_of_week
       AND hra.active = TRUE
+    LIMIT v_required_horse_count
   ) INTO v_eligible_horse_exists;
 
   IF NOT v_eligible_horse_exists THEN
-    -- No eligible horses with recurring availability for this day
+    -- Not enough eligible horses with recurring availability for this day
     RETURN;
   END IF;
 
@@ -103,50 +110,48 @@ BEGIN
           AND end_time > v_slot_start
       );
 
-      -- If instructor is not blocked, check if at least one eligible horse is available
+      -- If instructor is not blocked, check if enough eligible horses are available
       IF NOT v_instructor_blocked THEN
-        v_horse_available := EXISTS(
-          SELECT 1
-          FROM horses h
-          INNER JOIN horse_lesson_types hlt ON h.id = hlt.horse_id
-          WHERE hlt.lesson_type_id = p_lesson_type_id
-            AND hlt.eligible = TRUE
-            AND h.active = TRUE
-            AND h.deleted_at IS NULL
-            -- Check if horse has active recurring availability covering this slot
-            AND EXISTS(
-              SELECT 1
-              FROM horse_recurring_availability hra
-              WHERE hra.horse_id = h.id
-                AND hra.day_of_week = v_day_of_week
-                AND hra.active = TRUE
-                AND hra.start_time <= v_slot_start
-                AND hra.end_time >= v_slot_end
-            )
-            -- AND no horse-specific blocked time
-            AND NOT EXISTS(
-              SELECT 1
-              FROM blocked_times bt
-              WHERE bt.horse_id = h.id
-                AND bt.date = p_date
-                AND bt.start_time < v_slot_end
-                AND bt.end_time > v_slot_start
-            )
-            -- AND no conflicting booking (pending/confirmed only)
-            AND NOT EXISTS(
-              SELECT 1
-              FROM bookings b
-              WHERE b.horse_id = h.id
-                AND b.status IN ('pending', 'confirmed')
-                AND b.deleted_at IS NULL
-                AND b.start_time < v_slot_end_ts
-                AND b.end_time > v_slot_start_ts
-            )
-          LIMIT 1
-        );
+        -- Count how many eligible horses are available for this slot
+        SELECT COUNT(*) INTO v_available_horse_count
+        FROM horses h
+        INNER JOIN horse_lesson_types hlt ON h.id = hlt.horse_id
+        WHERE hlt.lesson_type_id = p_lesson_type_id
+          AND hlt.eligible = TRUE
+          AND h.active = TRUE
+          AND h.deleted_at IS NULL
+          -- Check if horse has active recurring availability covering this slot
+          AND EXISTS(
+            SELECT 1
+            FROM horse_recurring_availability hra
+            WHERE hra.horse_id = h.id
+              AND hra.day_of_week = v_day_of_week
+              AND hra.active = TRUE
+              AND hra.start_time <= v_slot_start
+              AND hra.end_time >= v_slot_end
+          )
+          -- AND no horse-specific blocked time
+          AND NOT EXISTS(
+            SELECT 1
+            FROM blocked_times bt
+            WHERE bt.horse_id = h.id
+              AND bt.date = p_date
+              AND bt.start_time < v_slot_end
+              AND bt.end_time > v_slot_start
+          )
+          -- AND no conflicting booking (pending/confirmed only)
+          AND NOT EXISTS(
+            SELECT 1
+            FROM bookings b
+            WHERE b.horse_id = h.id
+              AND b.status IN ('pending', 'confirmed')
+              AND b.deleted_at IS NULL
+              AND b.start_time < v_slot_end_ts
+              AND b.end_time > v_slot_start_ts
+          );
 
-        -- Return this slot if a horse is available
-        IF v_horse_available THEN
+        -- Return this slot if enough horses are available
+        IF v_available_horse_count >= v_required_horse_count THEN
           RETURN QUERY SELECT
             TO_CHAR(v_slot_start, 'HH24:MI'::TEXT),
             TO_CHAR(v_slot_end, 'HH24:MI'::TEXT),
