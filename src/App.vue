@@ -9,7 +9,8 @@ import { useAuthStore } from '@/stores/authStore'
 
 const authStore = useAuthStore()
 
-onMounted(() => {
-  authStore.loadAuthFromStorage()
+// Initialize Supabase session on app startup
+onMounted(async () => {
+  await authStore.initializeAuth()
 })
 </script>
