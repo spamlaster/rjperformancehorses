@@ -74,7 +74,7 @@ export const useBookingStore = defineStore('booking', () => {
 
   function areRidersValid(): boolean {
     const required = selectedLessonType.value?.requiredRiderCount || 1
-    const validRiders = riders.value.filter(r => r.firstName && r.lastName && (r.sameAsCustomer || r.dateOfBirth)).length
+    const validRiders = riders.value.filter(r => r.firstName && r.lastName && r.dateOfBirth).length
     return validRiders >= required
   }
 

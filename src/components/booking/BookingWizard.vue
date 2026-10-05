@@ -171,8 +171,8 @@
               </label>
             </div>
 
-            <div v-if="!rider.sameAsCustomer || riderCount > 1" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div v-if="!rider.sameAsCustomer || riderCount > 1">
                 <label class="form-label">First Name *</label>
                 <input
                   :value="rider.firstName"
@@ -183,7 +183,7 @@
                   required
                 />
               </div>
-              <div>
+              <div v-if="!rider.sameAsCustomer || riderCount > 1">
                 <label class="form-label">Last Name *</label>
                 <input
                   :value="rider.lastName"
@@ -195,12 +195,13 @@
                 />
               </div>
               <div class="md:col-span-2">
-                <label class="form-label">Date of Birth</label>
+                <label class="form-label">Date of Birth *</label>
                 <input
                   :value="rider.dateOfBirth"
                   @input="updateRider(index, { dateOfBirth: ($event.target as HTMLInputElement).value })"
                   type="date"
                   class="form-input"
+                  required
                 />
               </div>
             </div>
