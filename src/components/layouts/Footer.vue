@@ -49,9 +49,10 @@
       <!-- Bottom -->
       <div class="border-t border-warm-gold pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-400">
         <p>&copy; 2024 RJ Performance Horses. All rights reserved.</p>
-        <div class="flex gap-6 mt-4 md:mt-0">
+        <div class="flex gap-4 md:gap-6 mt-4 md:mt-0 flex-wrap justify-center">
           <a href="#" class="hover:text-accent-gold">Privacy Policy</a>
           <a href="#" class="hover:text-accent-gold">Terms of Service</a>
+          <router-link to="/admin" class="text-xs text-gray-500 hover:text-accent-gold">Admin</router-link>
         </div>
       </div>
     </div>

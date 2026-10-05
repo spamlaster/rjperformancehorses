@@ -56,6 +56,11 @@ const routes: RouteRecordRaw[] = [
     component: BookingWizardPage,
   },
   {
+    path: '/admin',
+    name: 'AdminRoot',
+    redirect: '/admin/login',
+  },
+  {
     path: '/admin/login',
     name: 'AdminLogin',
     component: LoginPage,
@@ -99,7 +104,7 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
-  scrollBehavior(to, from, savedPosition) {
+  scrollBehavior(_to, _from, savedPosition) {
     if (savedPosition) {
       return savedPosition
     } else {
@@ -108,20 +113,34 @@ const router = createRouter({
   },
 })
 
-router.beforeEach((to, from) => {
+router.beforeEach(async (to, _from) => {
   const authStore = useAuthStore()
 
+  // If visiting /admin/login while already authenticated as admin, redirect to dashboard
+  if (to.path === '/admin/login') {
+    await authStore.initializeAuth()
+    if (authStore.isAuthenticated && authStore.isAdmin) {
+      return '/admin/dashboard'
+    }
+    // Not authenticated - allow login page
+    return true
+  }
+
+  // Protected admin routes require authentication
   if (to.meta.requiresAuth) {
+    await authStore.initializeAuth()
     // Check if user is authenticated AND is an admin
     if (authStore.isAuthenticated && authStore.isAdmin) {
       return true
     }
     // Not authenticated or not admin - redirect to login
+    // Preserve the originally requested route for redirect after login
     return {
       path: '/admin/login',
       query: { redirect: to.fullPath },
     }
   }
+
   // Public route - allow navigation
   return true
 })
