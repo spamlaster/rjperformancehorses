@@ -163,7 +163,7 @@
               <label class="flex items-center gap-2 cursor-pointer">
                 <input
                   :checked="rider.sameAsCustomer"
-                  @change="updateRider(index, { sameAsCustomer: !rider.sameAsCustomer })"
+                  @change="toggleSameAsCustomer(index)"
                   type="checkbox"
                   class="rounded"
                 />
@@ -483,6 +483,25 @@ function updateRider(index: number, info: any) {
   bookingStore.updateRider(index, info)
 }
 
+function toggleSameAsCustomer(index: number) {
+  const newValue = !riders.value[index].sameAsCustomer
+  if (newValue) {
+    // Auto-populate rider info from customer when checking "I am the rider"
+    bookingStore.updateRider(index, {
+      sameAsCustomer: true,
+      firstName: customerInfo.value.firstName,
+      lastName: customerInfo.value.lastName,
+    })
+  } else {
+    // Clear auto-populated fields when unchecking
+    bookingStore.updateRider(index, {
+      sameAsCustomer: false,
+      firstName: '',
+      lastName: '',
+    })
+  }
+}
+
 function formatTime(timeStr: string): string {
   return formatTimeForDisplay(timeStr)
 }
@@ -520,16 +539,7 @@ onMounted(async () => {
 })
 
 const selectLesson = (lesson: LessonType) => bookingStore.setLessonType(lesson)
-const nextStep = () => {
-  if (currentStep.value === 2) {
-    // Auto-populate first rider if "I am the rider" is checked
-    if (riders.value[0].sameAsCustomer && riders.value.length === 1) {
-      riders.value[0].firstName = customerInfo.value.firstName
-      riders.value[0].lastName = customerInfo.value.lastName
-    }
-  }
-  bookingStore.nextStep()
-}
+const nextStep = () => bookingStore.nextStep()
 const prevStep = () => bookingStore.prevStep()
 const getStepLabel = (index: number) => ['Lesson Type', 'Date & Time', 'Contact Info', 'Review', 'Confirmation'][index] || ''
 </script>
