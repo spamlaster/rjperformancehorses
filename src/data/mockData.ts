@@ -1,5 +1,5 @@
-import { Customer, Rider, Horse, LessonType, BlockedTime, Booking, WaiverVersion } from '@/types/models'
-import { addDays, format } from 'date-fns'
+import { Customer, Rider, Horse, LessonType, Booking, WaiverVersion } from '@/types/models'
+import { addDays } from 'date-fns'
 
 // CUSTOMERS
 // Parent/Guardian accounts that manage riders
@@ -116,6 +116,8 @@ export const mockLessonTypes: LessonType[] = [
     price: 45,
     difficultyLevel: 'beginner',
     maxGroupSize: 1,
+    requiredHorseCount: 1,
+    requiredRiderCount: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -127,6 +129,8 @@ export const mockLessonTypes: LessonType[] = [
     price: 55,
     difficultyLevel: 'intermediate',
     maxGroupSize: 1,
+    requiredHorseCount: 1,
+    requiredRiderCount: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -138,6 +142,8 @@ export const mockLessonTypes: LessonType[] = [
     price: 65,
     difficultyLevel: 'advanced',
     maxGroupSize: 1,
+    requiredHorseCount: 1,
+    requiredRiderCount: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -149,6 +155,8 @@ export const mockLessonTypes: LessonType[] = [
     price: 100,
     difficultyLevel: 'beginner',
     maxGroupSize: 2,
+    requiredHorseCount: 2,
+    requiredRiderCount: 2,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -160,6 +168,8 @@ export const mockLessonTypes: LessonType[] = [
     price: 75,
     difficultyLevel: 'intermediate',
     maxGroupSize: 1,
+    requiredHorseCount: 1,
+    requiredRiderCount: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -171,6 +181,8 @@ export const mockLessonTypes: LessonType[] = [
     price: 75,
     difficultyLevel: 'intermediate',
     maxGroupSize: 1,
+    requiredHorseCount: 1,
+    requiredRiderCount: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -263,7 +275,7 @@ export const mockBookings: Booking[] = [
     id: 'booking-1',
     customerId: 'customer-1',
     lessonTypeId: 'lesson-1',
-    horseid: 'horse-1',
+    horseId: 'horse-1',
     startTime: addDays(new Date(), 1).toISOString(),
     endTime: addDays(new Date(), 1).toISOString(),
     status: 'confirmed',

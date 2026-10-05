@@ -2,9 +2,9 @@
   <div class="bg-white rounded-lg shadow-lg overflow-hidden">
     <!-- Step Indicators -->
     <div class="bg-gradient-to-r from-dark-brown to-text-dark text-white p-6">
-      <div class="flex items-center justify-between max-w-md mx-auto mb-4">
+      <div class="flex items-center justify-between max-w-4xl mx-auto mb-4">
         <div
-          v-for="(step, index) in totalSteps"
+          v-for="(_, index) in totalSteps"
           :key="index"
           class="flex flex-col items-center flex-1"
         >
@@ -74,155 +74,253 @@
               v-model="selectedDate"
               type="date"
               class="form-input"
-              @change="updateAvailableTimes"
             />
           </div>
-          <div>
-            <label class="form-label">Time</label>
-            <select
-              v-model="selectedTime"
-              class="form-select"
-              :disabled="!selectedDate"
-            >
-              <option value="">Select a time...</option>
-              <option
-                v-for="time in availableTimes"
-                :key="time"
-                :value="time"
-              >
-                {{ formatTime(time) }}
-              </option>
-            </select>
+          <div aria-live="polite">
+            <label class="form-label">Available times</label>
+            <p v-if="loadingSlots" role="status">Loading available times…</p>
+            <div v-else-if="availabilityError" role="alert">
+              <p>{{ availabilityError }}</p>
+              <button class="btn-secondary mt-2" @click="loadSlots">Try again</button>
+            </div>
+            <div v-else class="flex flex-wrap gap-2">
+              <button v-for="slot in slots" :key="slot.startTime"
+                :aria-pressed="selectedTime === slot.startTime"
+                :class="selectedTime === slot.startTime ? 'btn-primary' : 'btn-secondary'"
+                @click="selectedTime = slot.startTime">{{ formatTime(slot.startTime) }}</button>
+            </div>
           </div>
         </div>
-        <div v-if="selectedDate && availableTimes.length === 0" class="mt-4 p-4 bg-yellow-100 text-yellow-800 rounded">
+        <p v-if="selectedDate && !loadingSlots && !availabilityError && !slots.length" class="mt-4" role="status">
           No available times for this date. Please select another date.
-        </div>
+        </p>
+        <p v-if="selectedTime" class="mt-4 text-sm text-light-brown">
+          All times are shown in Mountain Time.
+        </p>
       </div>
 
-      <!-- Step 2: Rider Information -->
+      <!-- Step 2: Contact & Rider Information -->
       <div v-show="currentStep === 2">
-        <h2 class="text-2xl font-serif font-bold mb-6">Rider Information</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="form-label">First Name *</label>
-            <input
-              v-model="riderInfo.firstName"
-              type="text"
-              class="form-input"
-              required
-            />
+        <h2 class="text-2xl font-serif font-bold mb-6">Contact & Rider Information</h2>
+
+        <!-- Customer Information Section -->
+        <div class="mb-8">
+          <h3 class="text-lg font-bold text-text-dark mb-4">Your Contact Information</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="form-label">First Name *</label>
+              <input
+                v-model="customerInfo.firstName"
+                type="text"
+                class="form-input"
+                placeholder="John"
+                required
+              />
+            </div>
+            <div>
+              <label class="form-label">Last Name *</label>
+              <input
+                v-model="customerInfo.lastName"
+                type="text"
+                class="form-input"
+                placeholder="Doe"
+                required
+              />
+            </div>
+            <div>
+              <label class="form-label">Email *</label>
+              <input
+                v-model="customerInfo.email"
+                type="email"
+                class="form-input"
+                placeholder="john@example.com"
+                required
+              />
+            </div>
+            <div>
+              <label class="form-label">Phone</label>
+              <input
+                v-model="customerInfo.phone"
+                type="tel"
+                class="form-input"
+                placeholder="(555) 123-4567"
+              />
+            </div>
           </div>
-          <div>
-            <label class="form-label">Last Name *</label>
-            <input
-              v-model="riderInfo.lastName"
-              type="text"
-              class="form-input"
-              required
-            />
-          </div>
-          <div>
-            <label class="form-label">Email *</label>
-            <input
-              v-model="riderInfo.email"
-              type="email"
-              class="form-input"
-              required
-            />
-          </div>
-          <div>
-            <label class="form-label">Phone</label>
-            <input
-              v-model="riderInfo.phone"
-              type="tel"
-              class="form-input"
-            />
-          </div>
-          <div>
-            <label class="form-label">Date of Birth</label>
-            <input
-              v-model="riderInfo.dateOfBirth"
-              type="date"
-              class="form-input"
-            />
-          </div>
-          <div>
-            <label class="form-label">Experience Level</label>
-            <select
-              v-model="riderInfo.experienceLevel"
-              class="form-select"
-            >
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
-            </select>
+        </div>
+
+        <!-- Riders Information Section -->
+        <div>
+          <h3 class="text-lg font-bold text-text-dark mb-4">
+            Rider{{ riderCount > 1 ? 's' : '' }} ({{ riderCount }} required)
+          </h3>
+          <div
+            v-for="(rider, index) in riders"
+            :key="index"
+            class="mb-6 p-4 border-l-4 border-accent-gold bg-gray-50 rounded"
+          >
+            <div v-if="riderCount === 1" class="mb-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  :checked="rider.sameAsCustomer"
+                  @change="updateRider(index, { sameAsCustomer: !rider.sameAsCustomer })"
+                  type="checkbox"
+                  class="rounded"
+                />
+                <span class="text-text-dark">I am the rider</span>
+              </label>
+            </div>
+
+            <div v-if="!rider.sameAsCustomer || riderCount > 1" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="form-label">First Name *</label>
+                <input
+                  :value="rider.firstName"
+                  @input="updateRider(index, { firstName: ($event.target as HTMLInputElement).value })"
+                  type="text"
+                  class="form-input"
+                  placeholder="Jane"
+                  required
+                />
+              </div>
+              <div>
+                <label class="form-label">Last Name *</label>
+                <input
+                  :value="rider.lastName"
+                  @input="updateRider(index, { lastName: ($event.target as HTMLInputElement).value })"
+                  type="text"
+                  class="form-input"
+                  placeholder="Doe"
+                  required
+                />
+              </div>
+              <div class="md:col-span-2">
+                <label class="form-label">Date of Birth</label>
+                <input
+                  :value="rider.dateOfBirth"
+                  @input="updateRider(index, { dateOfBirth: ($event.target as HTMLInputElement).value })"
+                  type="date"
+                  class="form-input"
+                />
+              </div>
+            </div>
+
+            <div v-if="rider.sameAsCustomer && riderCount === 1" class="text-sm text-light-brown mt-3">
+              Using your contact information above.
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Step 3: Waiver -->
+      <!-- Step 3: Review -->
       <div v-show="currentStep === 3">
-        <h2 class="text-2xl font-serif font-bold mb-6">Waiver & Safety</h2>
-        <div class="bg-gray-50 p-6 rounded-lg border border-border-light mb-6 max-h-64 overflow-y-auto">
-          <h3 class="font-bold mb-4">RELEASE OF LIABILITY</h3>
-          <div class="text-sm text-gray-700 space-y-3">
-            <p>
-              I acknowledge that horseback riding involves inherent risks including but not limited to falls, injuries, and property damage. I accept full responsibility for these risks.
-            </p>
-            <p>
-              I confirm that I am in good physical health and able to participate in this activity. I have disclosed any medical conditions that may affect my ability to ride.
-            </p>
-            <p>
-              I release and hold harmless RJ Performance Horses, its owners, instructors, employees, and agents from any liability for injuries or damages sustained during lessons or activities.
-            </p>
-            <p>
-              I understand that helmets are required and agree to follow all safety instructions.
-            </p>
-            <p>
-              <strong>This is a placeholder waiver for Phase 1. Production waivers should be reviewed by legal counsel.</strong>
-            </p>
+        <h2 class="text-2xl font-serif font-bold mb-6">Review Your Booking</h2>
+
+        <div class="space-y-6">
+          <!-- Lesson Details -->
+          <div class="p-4 border border-border-light rounded-lg">
+            <h3 class="font-bold text-text-dark mb-3">Lesson Details</h3>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span class="text-light-brown">Lesson Type:</span>
+                <p class="font-semibold">{{ selectedLessonType?.name }}</p>
+              </div>
+              <div>
+                <span class="text-light-brown">Price:</span>
+                <p class="font-semibold">${{ selectedLessonType?.price }}</p>
+              </div>
+              <div>
+                <span class="text-light-brown">Duration:</span>
+                <p class="font-semibold">{{ selectedLessonType?.durationMinutes }} minutes</p>
+              </div>
+              <div>
+                <span class="text-light-brown">Date & Time:</span>
+                <p class="font-semibold">{{ formatDate(selectedDate) }} at {{ formatTime(selectedTime) }}</p>
+              </div>
+            </div>
           </div>
+
+          <!-- Contact Information -->
+          <div class="p-4 border border-border-light rounded-lg">
+            <h3 class="font-bold text-text-dark mb-3">Contact Information</h3>
+            <div class="text-sm">
+              <p><span class="text-light-brown">Name:</span> {{ customerInfo.firstName }} {{ customerInfo.lastName }}</p>
+              <p><span class="text-light-brown">Email:</span> {{ customerInfo.email }}</p>
+              <p v-if="customerInfo.phone"><span class="text-light-brown">Phone:</span> {{ customerInfo.phone }}</p>
+            </div>
+          </div>
+
+          <!-- Riders -->
+          <div class="p-4 border border-border-light rounded-lg">
+            <h3 class="font-bold text-text-dark mb-3">Rider{{ riderCount > 1 ? 's' : '' }}</h3>
+            <div class="space-y-3 text-sm">
+              <div v-for="(rider, index) in riders" :key="index" class="pb-3 last:pb-0 last:border-0 border-b border-border-light">
+                <p class="font-semibold">
+                  {{ rider.sameAsCustomer ? 'You (Rider ' : 'Rider ' }}{{ index + 1 }}{{ rider.sameAsCustomer ? ')' : '' }}
+                </p>
+                <p v-if="!rider.sameAsCustomer" class="text-light-brown">
+                  {{ rider.firstName }} {{ rider.lastName }}
+                  <span v-if="rider.dateOfBirth">(DOB: {{ rider.dateOfBirth }})</span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <button @click="bookingStore.setStep(2)" class="text-accent-gold hover:text-dark-brown font-semibold text-sm">
+            ← Edit Information
+          </button>
         </div>
-        <label class="flex items-start gap-3 mb-4">
-          <input
-            v-model="waiverSigned"
-            type="checkbox"
-            class="mt-1"
-          />
-          <span class="text-text-dark">
-            I have read and agree to the waiver. I understand the risks involved and accept full responsibility.
-          </span>
-        </label>
       </div>
 
       <!-- Step 4: Confirmation -->
       <div v-show="currentStep === 4">
-        <h2 class="text-2xl font-serif font-bold mb-6">Confirm Your Booking</h2>
-        <div class="space-y-4">
-          <div class="bg-gray-50 p-4 rounded-lg">
-            <h3 class="font-bold text-text-dark mb-3">Lesson Details</h3>
-            <div class="space-y-2 text-sm">
-              <p><span class="text-light-brown">Lesson:</span> <span class="font-medium">{{ selectedLessonType?.name }}</span></p>
-              <p><span class="text-light-brown">Date:</span> <span class="font-medium">{{ formatDate(selectedDate) }}</span></p>
-              <p><span class="text-light-brown">Time:</span> <span class="font-medium">{{ formatTime(selectedTime) }}</span></p>
-              <p><span class="text-light-brown">Price:</span> <span class="font-medium text-accent-gold">${{ selectedLessonType?.price }}</span></p>
+        <div v-if="bookingSuccess" class="text-center py-8">
+          <div class="text-5xl mb-4">✓</div>
+          <h2 class="text-3xl font-serif font-bold text-green-600 mb-4">
+            Your Lesson Has Been Booked!
+          </h2>
+          <p class="text-light-brown mb-6">
+            A confirmation will be sent to {{ customerInfo.email }}
+          </p>
+
+          <div class="bg-gray-50 p-6 rounded-lg mb-6 text-left max-w-md mx-auto">
+            <h3 class="font-bold text-text-dark mb-4">Booking Summary</h3>
+            <div class="space-y-3 text-sm">
+              <div>
+                <span class="text-light-brown">Lesson:</span> {{ selectedLessonType?.name }}
+              </div>
+              <div>
+                <span class="text-light-brown">Date & Time:</span> {{ formatDate(selectedDate) }} at {{ formatTime(selectedTime) }}
+              </div>
+              <div>
+                <span class="text-light-brown">Rider:</span> {{ getDisplayRiderName() }}
+              </div>
+              <div v-if="createdBookingId" class="pt-3 border-t border-border-light">
+                <span class="text-light-brown">Booking ID:</span> {{ createdBookingId }}
+              </div>
             </div>
           </div>
-          <div class="bg-gray-50 p-4 rounded-lg">
-            <h3 class="font-bold text-text-dark mb-3">Rider Information</h3>
-            <div class="space-y-2 text-sm">
-              <p><span class="text-light-brown">Name:</span> <span class="font-medium">{{ riderInfo.firstName }} {{ riderInfo.lastName }}</span></p>
-              <p><span class="text-light-brown">Email:</span> <span class="font-medium">{{ riderInfo.email }}</span></p>
-              <p><span class="text-light-brown">Phone:</span> <span class="font-medium">{{ riderInfo.phone || '—' }}</span></p>
-              <p><span class="text-light-brown">Experience:</span> <span class="font-medium capitalize">{{ riderInfo.experienceLevel }}</span></p>
-            </div>
-          </div>
-          <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-            <p class="text-sm text-green-800">
-              ✓ Waiver signed and accepted
-            </p>
-          </div>
+
+          <button
+            @click="resetAndStartOver"
+            class="btn-primary"
+          >
+            Book Another Lesson
+          </button>
+        </div>
+
+        <div v-else>
+          <h2 class="text-2xl font-serif font-bold text-text-dark mb-6">Completing Your Booking...</h2>
+          <p v-if="bookingError" class="text-red-600 mb-4">{{ bookingError }}</p>
+          <p v-else class="text-light-brown">Please wait while we process your booking...</p>
+
+          <button
+            v-if="bookingError"
+            @click="bookingStore.setStep(3)"
+            class="btn-secondary mt-4"
+          >
+            Back to Review
+          </button>
         </div>
       </div>
     </div>
@@ -236,6 +334,7 @@
         <button
           v-if="currentStep > 0"
           @click="prevStep"
+          :disabled="currentStep === 4 && submittingBooking"
           class="btn-secondary"
         >
           Back
@@ -243,18 +342,19 @@
         <button
           v-if="!isLastStep"
           @click="nextStep"
-          :disabled="!canGoNext"
-          :class="!canGoNext && 'opacity-50 cursor-not-allowed'"
+          :disabled="!canGoNext || submittingBooking"
+          :class="(!canGoNext || submittingBooking) && 'opacity-50 cursor-not-allowed'"
           class="btn-primary"
         >
           Next
         </button>
         <button
-          v-else
-          @click="confirmBooking"
-          class="btn-primary bg-green-600 hover:bg-green-700"
+          v-else-if="currentStep === 3"
+          @click="submitBooking"
+          :disabled="submittingBooking"
+          class="btn-primary"
         >
-          Confirm Booking
+          {{ submittingBooking ? 'Booking...' : 'Book Lesson' }}
         </button>
       </div>
     </div>
@@ -262,77 +362,174 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useBookingStore } from '@/stores/bookingStore'
-import { useAdminStore } from '@/stores/adminStore'
-import { format, parseISO } from 'date-fns'
+import { fetchLessonTypes } from '@/services/supabaseService'
+import { getBookableSlots, formatTimeForDisplay, type BookableSlot } from '@/services/availabilityService'
+import { createGuestBooking } from '@/services/guestBookingService'
+import { supabase } from '@/lib/supabase'
 import type { LessonType } from '@/types/models'
+import { format, parseISO } from 'date-fns'
 
 const bookingStore = useBookingStore()
-const adminStore = useAdminStore()
+const lessonTypes = ref<LessonType[]>([])
+const businessTimezone = ref('')
+const slots = ref<BookableSlot[]>([])
+const loadingSlots = ref(false)
+const availabilityError = ref('')
+const submittingBooking = ref(false)
+const bookingSuccess = ref(false)
+const bookingError = ref('')
+let requestId = 0
 
 const currentStep = computed(() => bookingStore.currentStep)
-const totalSteps = computed(() => bookingStore.totalSteps)
+const totalSteps = 5
+const isLastStep = computed(() => currentStep.value === totalSteps - 1)
 const canGoNext = computed(() => bookingStore.canGoNext)
-const isLastStep = computed(() => bookingStore.isLastStep)
-
-const lessonTypes = computed(() => adminStore.lessonTypes)
 const selectedLessonType = computed(() => bookingStore.selectedLessonType)
 const selectedDate = computed({
   get: () => bookingStore.selectedDate,
-  set: (val) => bookingStore.setDateAndTime(val, bookingStore.selectedTime),
+  set: (val: string) => bookingStore.setDateAndTime(val, ''),
 })
 const selectedTime = computed({
   get: () => bookingStore.selectedTime,
-  set: (val) => bookingStore.setDateAndTime(bookingStore.selectedDate, val),
+  set: (val: string) => bookingStore.setDateAndTime(bookingStore.selectedDate, val),
 })
-const riderInfo = computed(() => bookingStore.riderInfo)
-const waiverSigned = computed({
-  get: () => bookingStore.waiverSigned,
-  set: (val) => bookingStore.setWaiverSigned(val),
-})
+const customerInfo = computed(() => bookingStore.customerInfo)
+const riders = computed(() => bookingStore.riders)
+const riderCount = computed(() => bookingStore.getRiderCount())
+const createdBookingId = computed(() => bookingStore.createdBookingId)
 
-const availableTimes = computed(() => {
-  if (!selectedDate.value) return []
-  const slots = adminStore.getAvailableSlots(selectedDate.value)
-  return [...new Set(slots.map(s => s.startTime))].sort()
-})
-
-const selectLesson = (lesson: LessonType) => {
-  bookingStore.setLessonType(lesson)
+async function loadSlots() {
+  const id = ++requestId
+  selectedTime.value = ''
+  slots.value = []
+  availabilityError.value = ''
+  loadingSlots.value = false
+  if (!selectedDate.value || !selectedLessonType.value) return
+  loadingSlots.value = true
+  try {
+    const result = await getBookableSlots(selectedLessonType.value.id, selectedDate.value)
+    if (id === requestId) slots.value = result.filter(slot => slot.available)
+  } catch {
+    if (id === requestId) availabilityError.value = 'Unable to load availability. Please try again.'
+  } finally {
+    if (id === requestId) loadingSlots.value = false
+  }
 }
 
+async function submitBooking() {
+  submittingBooking.value = true
+  bookingError.value = ''
+
+  try {
+    // Build start/end times as ISO strings
+    const [year, month, day] = selectedDate.value.split('-')
+    const [hours, minutes] = selectedTime.value.split(':')
+    const startTime = new Date(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day),
+      parseInt(hours),
+      parseInt(minutes)
+    ).toISOString()
+
+    const endTime = new Date(
+      new Date(startTime).getTime() + (selectedLessonType.value?.durationMinutes || 60) * 60000
+    ).toISOString()
+
+    // Prepare riders array
+    const ridersData = riders.value.map((rider, index) => ({
+      firstName: rider.sameAsCustomer && index === 0 ? customerInfo.value.firstName : rider.firstName,
+      lastName: rider.sameAsCustomer && index === 0 ? customerInfo.value.lastName : rider.lastName,
+      dateOfBirth: rider.dateOfBirth || undefined,
+    }))
+
+    const result = await createGuestBooking({
+      lessonTypeId: selectedLessonType.value?.id || '',
+      startTime,
+      endTime,
+      customer: {
+        firstName: customerInfo.value.firstName,
+        lastName: customerInfo.value.lastName,
+        email: customerInfo.value.email,
+        phone: customerInfo.value.phone,
+      },
+      riders: ridersData,
+    })
+
+    if (result.success && result.bookingId) {
+      bookingStore.setBookingConfirmed(result.bookingId)
+      bookingSuccess.value = true
+      bookingStore.setStep(4)
+    } else {
+      bookingError.value = result.error || 'Failed to create booking'
+    }
+  } catch (err) {
+    bookingError.value = 'An unexpected error occurred. Please try again.'
+    console.error(err)
+  } finally {
+    submittingBooking.value = false
+  }
+}
+
+function resetAndStartOver() {
+  bookingStore.resetWizard()
+  bookingSuccess.value = false
+  bookingError.value = ''
+}
+
+function updateRider(index: number, info: any) {
+  bookingStore.updateRider(index, info)
+}
+
+function formatTime(timeStr: string): string {
+  return formatTimeForDisplay(timeStr)
+}
+
+function formatDate(dateStr: string): string {
+  try {
+    return format(parseISO(dateStr), 'EEEE, MMMM d, yyyy')
+  } catch {
+    return dateStr
+  }
+}
+
+function getDisplayRiderName(): string {
+  if (riders.value.length === 1) {
+    if (riders.value[0].sameAsCustomer) {
+      return `${customerInfo.value.firstName} ${customerInfo.value.lastName}`
+    }
+    return `${riders.value[0].firstName} ${riders.value[0].lastName}`
+  }
+  return riders.value.map((r, i) => {
+    if (i === 0 && r.sameAsCustomer) {
+      return `${customerInfo.value.firstName} ${customerInfo.value.lastName}`
+    }
+    return `${r.firstName} ${r.lastName}`
+  }).join(', ')
+}
+
+watch([() => selectedLessonType.value?.id, selectedDate], loadSlots, { immediate: true, flush: 'sync' })
+
+onMounted(async () => {
+  bookingStore.setStep(0)
+  lessonTypes.value = await fetchLessonTypes(true)
+  const { data } = await supabase.from('business_config').select('config_value').eq('config_key', 'business_timezone').single()
+  businessTimezone.value = data?.config_value || 'business local time'
+})
+
+const selectLesson = (lesson: LessonType) => bookingStore.setLessonType(lesson)
 const nextStep = () => {
+  if (currentStep.value === 2) {
+    // Auto-populate first rider if "I am the rider" is checked
+    if (riders.value[0].sameAsCustomer && riders.value.length === 1) {
+      riders.value[0].firstName = customerInfo.value.firstName
+      riders.value[0].lastName = customerInfo.value.lastName
+    }
+  }
   bookingStore.nextStep()
 }
-
-const prevStep = () => {
-  bookingStore.prevStep()
-}
-
-const updateAvailableTimes = () => {
-  bookingStore.setDateAndTime(selectedDate.value, '')
-}
-
-const confirmBooking = () => {
-  const result = bookingStore.submitBooking()
-  alert('Booking confirmed! This is a Phase 1 demo. Data logged to console.')
-  console.log('Booking data:', result)
-  bookingStore.resetWizard()
-}
-
-const formatTime = (time: string) => {
-  if (!time) return ''
-  return format(parseISO(`2024-01-01T${time}`), 'h:mm a')
-}
-
-const formatDate = (date: string) => {
-  if (!date) return ''
-  return format(parseISO(date), 'MMMM dd, yyyy')
-}
-
-const getStepLabel = (index: number) => {
-  const labels = ['Lesson Type', 'Date & Time', 'Rider Info', 'Waiver', 'Confirm']
-  return labels[index] || ''
-}
+const prevStep = () => bookingStore.prevStep()
+const getStepLabel = (index: number) => ['Lesson Type', 'Date & Time', 'Contact Info', 'Review', 'Confirmation'][index] || ''
 </script>

@@ -54,6 +54,8 @@ export interface LessonType {
   price: number;
   difficultyLevel: 'beginner' | 'intermediate' | 'advanced';
   maxGroupSize: number;
+  requiredHorseCount: number;
+  requiredRiderCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -94,7 +96,7 @@ export interface Booking {
   id: string;
   customerId: string;
   lessonTypeId: string;
-  horseId: string;
+  horseId: string; // Primary horse (legacy compat)
   startTime: string; // ISO 8601 datetime
   endTime: string; // ISO 8601 datetime
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
@@ -105,6 +107,13 @@ export interface Booking {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
+}
+
+export interface BookingHorse {
+  id: string;
+  bookingId: string;
+  horseId: string;
+  createdAt: string;
 }
 
 export interface WaiverVersion {

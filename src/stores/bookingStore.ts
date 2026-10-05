@@ -1,43 +1,86 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { BookingWizardState, LessonType, Rider } from '@/types/models'
+import type { LessonType } from '@/types/models'
+
+export interface GuestCustomer {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
+export interface RiderInfo {
+  firstName: string;
+  lastName: string;
+  dateOfBirth?: string;
+  sameAsCustomer?: boolean;
+}
 
 export const useBookingStore = defineStore('booking', () => {
   const currentStep = ref<number>(0)
   const selectedLessonType = ref<LessonType | null>(null)
   const selectedDate = ref<string>('')
   const selectedTime = ref<string>('')
-  const selectedHorseId = ref<string>('')
-  const riderInfo = ref<Partial<Rider>>({
+
+  // Customer/Contact Information
+  const customerInfo = ref<GuestCustomer>({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
-    dateOfBirth: '',
-    experienceLevel: 'beginner',
   })
-  const waiverSigned = ref<boolean>(false)
+
+  // Riders for this booking (can be 1 or more)
+  const riders = ref<RiderInfo[]>([{
+    firstName: '',
+    lastName: '',
+    dateOfBirth: '',
+    sameAsCustomer: false,
+  }])
+
+  // Confirmation state
+  const bookingConfirmed = ref<boolean>(false)
+  const createdBookingId = ref<string>('')
 
   const totalSteps = 5
 
   const canGoNext = computed(() => {
     switch (currentStep.value) {
       case 0:
+        // Lesson type selected
         return !!selectedLessonType.value
       case 1:
+        // Date and time selected
         return !!selectedDate.value && !!selectedTime.value
       case 2:
-        return !!riderInfo.value.firstName &&
-               !!riderInfo.value.lastName &&
-               !!riderInfo.value.email
+        // Customer info complete and riders info complete
+        return isCustomerInfoValid() && areRidersValid()
       case 3:
-        return waiverSigned.value
+        // Review step - just show data, always can proceed
+        return true
       case 4:
+        // Confirmation - always can stay
         return true
       default:
         return false
     }
   })
+
+  function isCustomerInfoValid(): boolean {
+    return !!(customerInfo.value.firstName &&
+              customerInfo.value.lastName &&
+              customerInfo.value.email)
+  }
+
+  function areRidersValid(): boolean {
+    const required = selectedLessonType.value?.requiredRiderCount || 1
+    const validRiders = riders.value.filter(r => r.firstName && r.lastName && (r.sameAsCustomer || r.dateOfBirth)).length
+    return validRiders >= required
+  }
+
+  function getRiderCount(): number {
+    return selectedLessonType.value?.requiredRiderCount || 1
+  }
 
   const isLastStep = computed(() => currentStep.value === totalSteps - 1)
 
@@ -60,6 +103,17 @@ export const useBookingStore = defineStore('booking', () => {
   }
 
   function setLessonType(lesson: LessonType) {
+    if (selectedLessonType.value?.id !== lesson.id) {
+      selectedTime.value = ''
+      // Reset riders to match new lesson requirements
+      const riderCount = lesson.requiredRiderCount || 1
+      riders.value = Array(riderCount).fill(null).map(() => ({
+        firstName: '',
+        lastName: '',
+        dateOfBirth: '',
+        sameAsCustomer: false,
+      }))
+    }
     selectedLessonType.value = lesson
   }
 
@@ -68,31 +122,19 @@ export const useBookingStore = defineStore('booking', () => {
     selectedTime.value = time
   }
 
-  function setHorseId(horseId: string) {
-    selectedHorseId.value = horseId
+  function updateCustomerInfo(info: Partial<GuestCustomer>) {
+    customerInfo.value = { ...customerInfo.value, ...info }
   }
 
-  function updateRiderInfo(info: Partial<Rider>) {
-    riderInfo.value = { ...riderInfo.value, ...info }
-  }
-
-  function setWaiverSigned(signed: boolean) {
-    waiverSigned.value = signed
-  }
-
-  function submitBooking() {
-    // In Phase 1, this just logs the booking data
-    const bookingData = {
-      lessonType: selectedLessonType.value,
-      date: selectedDate.value,
-      time: selectedTime.value,
-      horse: selectedHorseId.value,
-      rider: riderInfo.value,
-      waiverSigned: waiverSigned.value,
-      submittedAt: new Date().toISOString(),
+  function updateRider(index: number, info: Partial<RiderInfo>) {
+    if (index >= 0 && index < riders.value.length) {
+      riders.value[index] = { ...riders.value[index], ...info }
     }
-    console.log('Booking submitted:', bookingData)
-    return bookingData
+  }
+
+  function setBookingConfirmed(bookingId: string) {
+    bookingConfirmed.value = true
+    createdBookingId.value = bookingId
   }
 
   function resetWizard() {
@@ -100,16 +142,20 @@ export const useBookingStore = defineStore('booking', () => {
     selectedLessonType.value = null
     selectedDate.value = ''
     selectedTime.value = ''
-    selectedHorseId.value = ''
-    riderInfo.value = {
+    customerInfo.value = {
       firstName: '',
       lastName: '',
       email: '',
       phone: '',
-      dateOfBirth: '',
-      experienceLevel: 'beginner',
     }
-    waiverSigned.value = false
+    riders.value = [{
+      firstName: '',
+      lastName: '',
+      dateOfBirth: '',
+      sameAsCustomer: false,
+    }]
+    bookingConfirmed.value = false
+    createdBookingId.value = ''
   }
 
   return {
@@ -117,9 +163,10 @@ export const useBookingStore = defineStore('booking', () => {
     selectedLessonType,
     selectedDate,
     selectedTime,
-    selectedHorseId,
-    riderInfo,
-    waiverSigned,
+    customerInfo,
+    riders,
+    bookingConfirmed,
+    createdBookingId,
     totalSteps,
     canGoNext,
     isLastStep,
@@ -128,10 +175,12 @@ export const useBookingStore = defineStore('booking', () => {
     prevStep,
     setLessonType,
     setDateAndTime,
-    setHorseId,
-    updateRiderInfo,
-    setWaiverSigned,
-    submitBooking,
+    updateCustomerInfo,
+    updateRider,
+    setBookingConfirmed,
     resetWizard,
+    isCustomerInfoValid,
+    areRidersValid,
+    getRiderCount,
   }
 })

@@ -42,6 +42,8 @@ export async function fetchLessonTypes(activeOnly = false): Promise<LessonType[]
     price: row.price,
     difficultyLevel: row.difficulty_level,
     maxGroupSize: row.max_group_size,
+    requiredHorseCount: row.required_horse_count || 1,
+    requiredRiderCount: row.required_rider_count || 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }))
