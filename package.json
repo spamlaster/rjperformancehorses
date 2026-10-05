@@ -12,7 +12,11 @@
     "db:start": "npx supabase start",
     "db:stop": "npx supabase stop",
     "db:reset": "npx supabase db reset",
-    "db:status": "npx supabase status"
+    "db:status": "npx supabase status",
+    "test:availability": "sh tests/run-database-tests.sh",
+    "test:browser": "node tests/browser.mjs",
+    "test:admin": "node tests/admin-browser.mjs",
+    "test": "npm run test:availability && npm run test:browser && npm run test:admin"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",
@@ -23,6 +27,7 @@
     "zod": "^3.22.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@typescript-eslint/eslint-plugin": "^6.4.1",
     "@typescript-eslint/parser": "^6.4.1",
     "@vitejs/plugin-vue": "^4.3.4",
@@ -34,6 +39,6 @@
     "tailwindcss": "^3.3.3",
     "typescript": "^5.1.6",
     "vite": "^4.4.9",
-    "vue-tsc": "^1.8.8"
+    "vue-tsc": "^3.1.0"
   }
 }

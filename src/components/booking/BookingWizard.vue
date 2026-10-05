@@ -1,8 +1,8 @@
 <template>
   <div class="bg-white rounded-lg shadow-lg overflow-hidden">
     <!-- Step Indicators -->
-    <div class="bg-gradient-to-r from-dark-brown to-text-dark text-white p-6">
-      <div class="flex items-center justify-between max-w-4xl mx-auto mb-4">
+    <div class="bg-gradient-to-r from-dark-brown to-text-dark text-white p-4 md:p-5">
+      <div class="flex items-center justify-between max-w-4xl mx-auto mb-3">
         <div
           v-for="(_, index) in totalSteps"
           :key="index"
@@ -10,7 +10,7 @@
         >
           <div
             :class="[
-              'w-10 h-10 rounded-full flex items-center justify-center font-bold mb-2 transition-all',
+            'w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center font-bold mb-1 transition-all',
               index < currentStep
                 ? 'bg-green-500'
                 : index === currentStep
@@ -35,16 +35,16 @@
     </div>
 
     <!-- Steps -->
-    <div class="p-6 md:p-8 min-h-96">
+    <div class="p-4 md:p-6">
       <!-- Step 0: Lesson Type -->
       <div v-show="currentStep === 0">
-        <h2 class="text-2xl font-serif font-bold mb-6">Select a Lesson</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <h2 class="text-2xl font-serif font-bold mb-4">Select a Lesson</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <button
             v-for="lesson in lessonTypes"
             :key="lesson.id"
             @click="selectLesson(lesson)"
-            class="p-4 border-2 rounded-lg text-left transition-all"
+            class="p-3 border-2 rounded-lg text-left transition-all"
             :class="
               selectedLessonType?.id === lesson.id
                 ? 'border-accent-gold bg-yellow-50'
@@ -52,7 +52,7 @@
             "
           >
             <h3 class="font-bold text-text-dark">{{ lesson.name }}</h3>
-            <p class="text-sm text-light-brown mb-3">{{ lesson.description }}</p>
+            <p class="text-sm text-light-brown mb-2 line-clamp-2">{{ lesson.description }}</p>
             <div class="flex justify-between items-end">
               <div>
                 <span class="text-accent-gold font-bold">${{ lesson.price }}</span>
@@ -66,8 +66,11 @@
 
       <!-- Step 1: Date & Time -->
       <div v-show="currentStep === 1">
-        <h2 class="text-2xl font-serif font-bold mb-6">Select Date & Time</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h2 class="text-2xl font-serif font-bold">Select Date & Time</h2>
+          <span class="hidden sm:inline text-xs text-light-brown">Mountain Time</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-4">
           <div>
             <label class="form-label">Date</label>
             <input
@@ -77,7 +80,7 @@
             />
           </div>
           <div aria-live="polite">
-            <label class="form-label">Available times</label>
+            <label class="form-label mb-2">Available times</label>
             <p v-if="loadingSlots" role="status">Loading available times…</p>
             <div v-else-if="availabilityError" role="alert">
               <p>{{ availabilityError }}</p>
@@ -94,9 +97,7 @@
         <p v-if="selectedDate && !loadingSlots && !availabilityError && !slots.length" class="mt-4" role="status">
           No available times for this date. Please select another date.
         </p>
-        <p v-if="selectedTime" class="mt-4 text-sm text-light-brown">
-          All times are shown in Mountain Time.
-        </p>
+        <p v-if="selectedTime" class="mt-3 text-sm text-light-brown">Selected time: {{ formatTime(selectedTime) }}</p>
       </div>
 
       <!-- Step 2: Contact & Rider Information -->
@@ -341,21 +342,21 @@
           Back
         </button>
         <button
-          v-if="!isLastStep"
+          v-if="currentStep === 3"
+          @click="submitBooking"
+          :disabled="submittingBooking"
+          class="btn-primary"
+        >
+          {{ submittingBooking ? 'Booking...' : 'Book Lesson' }}
+        </button>
+        <button
+          v-else-if="!isLastStep"
           @click="nextStep"
           :disabled="!canGoNext || submittingBooking"
           :class="(!canGoNext || submittingBooking) && 'opacity-50 cursor-not-allowed'"
           class="btn-primary"
         >
           Next
-        </button>
-        <button
-          v-else-if="currentStep === 3"
-          @click="submitBooking"
-          :disabled="submittingBooking"
-          class="btn-primary"
-        >
-          {{ submittingBooking ? 'Booking...' : 'Book Lesson' }}
         </button>
       </div>
     </div>

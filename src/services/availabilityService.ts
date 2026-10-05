@@ -30,7 +30,7 @@ export interface BookableSlot {
  * Business Rules Enforced:
  * 1. Instructor must have active recurring availability covering the lesson
  * 2. Lesson duration must fit completely within an availability window
- * 3. At least one eligible horse must have active recurring availability
+ * 3. The required number of distinct eligible horses must have active recurring availability
  * 4. Horses with ZERO recurring availability rows are NOT available
  * 5. No instructor blocks overlapping the slot
  * 6. No horse-specific blocks overlapping the slot
@@ -47,27 +47,16 @@ export async function getBookableSlots(
     return []
   }
 
-  try {
-    const { data, error } = await supabase.rpc('get_bookable_slots', {
-      p_lesson_type_id: lessonTypeId,
-      p_date: date,
-    })
-
-    if (error) {
-      console.error('Error fetching bookable slots:', error)
-      return []
-    }
-
-    // Type cast and return slots
-    return (data || []).map((slot: any) => ({
-      startTime: slot.start_time,
-      endTime: slot.end_time,
-      available: slot.available,
-    }))
-  } catch (err) {
-    console.error('Exception fetching bookable slots:', err)
-    return []
-  }
+  const { data, error } = await supabase.rpc('get_bookable_slots', {
+    p_lesson_type_id: lessonTypeId,
+    p_date: date,
+  })
+  if (error) throw error
+  return (data || []).map((slot: { start_time: string; end_time: string; available: boolean }) => ({
+    startTime: slot.start_time,
+    endTime: slot.end_time,
+    available: slot.available,
+  }))
 }
 
 /**

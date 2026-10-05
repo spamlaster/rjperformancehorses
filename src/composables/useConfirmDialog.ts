@@ -12,7 +12,6 @@ export interface ConfirmDialog {
   onCancel: (() => void) | null
 }
 
-export function useConfirmDialog() {
   const isOpen = ref(false)
   const title = ref('')
   const message = ref('')
@@ -22,6 +21,7 @@ export function useConfirmDialog() {
   let onConfirm: (() => void | Promise<void>) | null = null
   let onCancel: (() => void) | null = null
 
+export function useConfirmDialog() {
   const confirm = async (options: {
     title: string
     message: string

@@ -21,11 +21,11 @@
             <thead class="border-b border-border-light">
               <tr class="text-left">
                 <th class="p-4 font-bold text-text-dark">Date & Time</th>
-                <th class="p-4 font-bold text-text-dark">Rider</th>
+                <th class="p-4 font-bold text-text-dark">Customer</th>
                 <th class="p-4 font-bold text-text-dark">Lesson</th>
                 <th class="p-4 font-bold text-text-dark">Horse</th>
                 <th class="p-4 font-bold text-text-dark">Status</th>
-                <th class="p-4 font-bold text-text-dark">Actions</th>
+
               </tr>
             </thead>
             <tbody>
@@ -35,22 +35,15 @@
                 class="border-b border-border-light hover:bg-gray-50"
               >
                 <td class="p-4">{{ formatDateTime(booking.startTime) }}</td>
-                <td class="p-4 text-sm">{{ getRiderName(booking.riderId) }}</td>
+                <td class="p-4 text-sm">{{ getCustomerName(booking.customerId) }}</td>
                 <td class="p-4 text-sm">{{ getLessonName(booking.lessonTypeId) }}</td>
-                <td class="p-4 text-sm">{{ getHorseName(booking.horseid) }}</td>
+                <td class="p-4 text-sm">{{ getHorseName(booking.horseId) }}</td>
                 <td class="p-4">
                   <span class="badge" :class="statusClasses(booking.status)">
                     {{ booking.status }}
                   </span>
                 </td>
-                <td class="p-4 flex gap-2">
-                  <button
-                    @click="toggleStatus(booking)"
-                    class="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    Update
-                  </button>
-                </td>
+
               </tr>
             </tbody>
           </table>
@@ -78,9 +71,9 @@ const filteredBookings = computed(() => {
   )
 })
 
-const getRiderName = (riderId: string) => {
-  const rider = adminStore.getRider(riderId)
-  return rider ? `${rider.firstName} ${rider.lastName}` : 'Unknown'
+const getCustomerName = (customerId: string) => {
+  const customer = adminStore.customers.find(c => c.id === customerId)
+  return customer ? `${customer.firstName} ${customer.lastName}` : 'Unknown'
 }
 
 const getLessonName = (lessonTypeId: string) => {
@@ -112,10 +105,4 @@ const statusClasses = (status: string) => {
   }
 }
 
-const toggleStatus = (booking: any) => {
-  const statuses = ['pending', 'confirmed', 'completed', 'cancelled']
-  const currentIndex = statuses.indexOf(booking.status)
-  const nextStatus = statuses[(currentIndex + 1) % statuses.length]
-  adminStore.updateBooking(booking.id, { status: nextStatus })
-}
 </script>

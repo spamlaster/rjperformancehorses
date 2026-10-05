@@ -34,7 +34,13 @@ export const useAuthStore = defineStore('auth', () => {
    * Initialize auth state from Supabase session
    * Called on app startup
    */
-  async function initializeAuth() {
+  let initialization: Promise<void> | undefined
+  function initializeAuth(): Promise<void> {
+    initialization ??= restoreAuth()
+    return initialization
+  }
+
+  async function restoreAuth() {
     isLoading.value = true
     try {
       // Get current session
@@ -47,10 +53,14 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       // Listen for auth changes
-      supabase.auth.onAuthStateChange(async (event, session) => {
+      supabase.auth.onAuthStateChange((_event, session) => {
         if (session?.user) {
           user.value = session.user
-          await checkAdminStatus(session.user.id)
+          // Run database requests after the auth callback releases its lock.
+          const id = session.user.id
+          setTimeout(() => {
+            if (user.value?.id === id) void checkAdminStatus(id)
+          }, 0)
         } else {
           user.value = null
           isAdmin.value = false

@@ -103,9 +103,9 @@ BEGIN
     RETURN jsonb_build_object('error', 'Customer email is required');
   END IF;
 
-  -- Fetch lesson type and validate
+  -- Fetch lesson type and validate (lesson_types uses active flag, not deleted_at)
   SELECT * INTO v_lesson FROM lesson_types
-    WHERE id = p_lesson_type_id AND active AND deleted_at IS NULL;
+    WHERE id = p_lesson_type_id AND active;
 
   IF v_lesson IS NULL THEN
     RETURN jsonb_build_object('error', 'Lesson type not found or inactive');
@@ -176,8 +176,10 @@ BEGIN
   END IF;
 
   -- ============================================================
-  -- CREATE/MATCH RIDERS
+  -- CREATE/MATCH RIDERS (Deferred insertion until after booking exists)
   -- ============================================================
+  -- Note: We only create/find riders here, but insert booking_riders later
+  -- after the booking is created (otherwise booking_id will be NULL)
   FOR v_rider IN SELECT jsonb_array_elements(p_riders) AS rider_obj LOOP
     -- Try to find existing rider matching this customer + name + dob
     SELECT id INTO v_rider_id FROM riders r
@@ -201,11 +203,6 @@ BEGIN
           'beginner'
         );
     END IF;
-
-    -- Create booking_riders relationship
-    INSERT INTO booking_riders(id, booking_id, rider_id)
-      VALUES(public.generate_id(), v_booking_id, v_rider_id)
-      ON CONFLICT (booking_id, rider_id) DO NOTHING;
   END LOOP;
 
   -- ============================================================

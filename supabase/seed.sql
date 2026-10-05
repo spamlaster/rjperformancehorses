@@ -106,49 +106,71 @@ INSERT INTO horse_lesson_types (id, horse_id, lesson_type_id, eligible) VALUES
 
 -- Instructor (Rylie) Recurring Availability
 -- NOTE: This is sample development data and does NOT represent actual Rylie schedule
--- Monday: 14:00-18:00, Tuesday: 14:00-18:00, Thursday: 14:00-18:00
+-- Monday-Friday: 10:00-12:00 (morning) and 14:00-18:00 (afternoon)
 INSERT INTO instructor_availability (id, day_of_week, start_time, end_time, active) VALUES
-  ('ia-1', 1, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Monday
-  ('ia-2', 2, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Tuesday
-  ('ia-3', 4, '14:00'::TIME, '18:00'::TIME, TRUE);  -- Thursday
+  ('ia-1', 1, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Monday morning
+  ('ia-2', 1, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Monday afternoon
+  ('ia-3', 2, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Tuesday morning
+  ('ia-4', 2, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Tuesday afternoon
+  ('ia-5', 3, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Wednesday morning
+  ('ia-6', 3, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Wednesday afternoon
+  ('ia-7', 4, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Thursday morning
+  ('ia-8', 4, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Thursday afternoon
+  ('ia-9', 5, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Friday morning
+  ('ia-10', 5, '14:00'::TIME, '18:00'::TIME, TRUE); -- Friday afternoon
 
 -- Horse Recurring Availability
--- DevSunset: Mon/Tue/Thu 14:00-18:00, Fri 10:00-14:00
+-- DevSunset: Mon-Fri 10:00-12:00 (morning) and 14:00-18:00 (afternoon)
 INSERT INTO horse_recurring_availability (id, horse_id, day_of_week, start_time, end_time, active) VALUES
-  ('hra-1', 'horse-1', 1, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Monday
-  ('hra-2', 'horse-1', 2, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Tuesday
-  ('hra-3', 'horse-1', 4, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Thursday
-  ('hra-4', 'horse-1', 5, '10:00'::TIME, '14:00'::TIME, TRUE);  -- Friday
+  ('hra-1', 'horse-1', 1, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Monday morning
+  ('hra-2', 'horse-1', 1, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Monday afternoon
+  ('hra-3', 'horse-1', 2, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Tuesday morning
+  ('hra-4', 'horse-1', 2, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Tuesday afternoon
+  ('hra-5', 'horse-1', 3, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Wednesday morning
+  ('hra-6', 'horse-1', 3, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Wednesday afternoon
+  ('hra-7', 'horse-1', 4, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Thursday morning
+  ('hra-8', 'horse-1', 4, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Thursday afternoon
+  ('hra-9', 'horse-1', 5, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Friday morning
+  ('hra-10', 'horse-1', 5, '14:00'::TIME, '18:00'::TIME, TRUE);  -- Friday afternoon
 
--- DevRanger: Mon-Thu 14:00-18:00
+-- DevRanger: Mon-Fri 10:00-12:00 (morning) and 14:00-18:00 (afternoon)
 INSERT INTO horse_recurring_availability (id, horse_id, day_of_week, start_time, end_time, active) VALUES
-  ('hra-5', 'horse-2', 1, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Monday
-  ('hra-6', 'horse-2', 2, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Tuesday
-  ('hra-7', 'horse-2', 3, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Wednesday
-  ('hra-8', 'horse-2', 4, '14:00'::TIME, '18:00'::TIME, TRUE);  -- Thursday
+  ('hra-11', 'horse-2', 1, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Monday morning
+  ('hra-12', 'horse-2', 1, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Monday afternoon
+  ('hra-13', 'horse-2', 2, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Tuesday morning
+  ('hra-14', 'horse-2', 2, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Tuesday afternoon
+  ('hra-15', 'horse-2', 3, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Wednesday morning
+  ('hra-16', 'horse-2', 3, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Wednesday afternoon
+  ('hra-17', 'horse-2', 4, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Thursday morning
+  ('hra-18', 'horse-2', 4, '14:00'::TIME, '18:00'::TIME, TRUE),  -- Thursday afternoon
+  ('hra-19', 'horse-2', 5, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Friday morning
+  ('hra-20', 'horse-2', 5, '14:00'::TIME, '18:00'::TIME, TRUE);  -- Friday afternoon
 
--- DevDakota: Tue/Wed/Thu 14:00-17:00
+-- DevDakota: Tue/Wed/Thu 10:00-12:00 and 14:00-17:00
 INSERT INTO horse_recurring_availability (id, horse_id, day_of_week, start_time, end_time, active) VALUES
-  ('hra-9', 'horse-3', 2, '14:00'::TIME, '17:00'::TIME, TRUE),  -- Tuesday
-  ('hra-10', 'horse-3', 3, '14:00'::TIME, '17:00'::TIME, TRUE),  -- Wednesday
-  ('hra-11', 'horse-3', 4, '14:00'::TIME, '17:00'::TIME, TRUE);  -- Thursday
+  ('hra-21', 'horse-3', 2, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Tuesday morning
+  ('hra-22', 'horse-3', 2, '14:00'::TIME, '17:00'::TIME, TRUE),  -- Tuesday afternoon
+  ('hra-23', 'horse-3', 3, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Wednesday morning
+  ('hra-24', 'horse-3', 3, '14:00'::TIME, '17:00'::TIME, TRUE),  -- Wednesday afternoon
+  ('hra-25', 'horse-3', 4, '10:00'::TIME, '12:00'::TIME, TRUE),  -- Thursday morning
+  ('hra-26', 'horse-3', 4, '14:00'::TIME, '17:00'::TIME, TRUE);  -- Thursday afternoon
 
 -- DevMoonlight: Mon/Wed 10:00-14:00
 INSERT INTO horse_recurring_availability (id, horse_id, day_of_week, start_time, end_time, active) VALUES
-  ('hra-12', 'horse-4', 1, '10:00'::TIME, '14:00'::TIME, TRUE),  -- Monday
-  ('hra-13', 'horse-4', 3, '10:00'::TIME, '14:00'::TIME, TRUE);  -- Wednesday
+  ('hra-27', 'horse-4', 1, '10:00'::TIME, '14:00'::TIME, TRUE),  -- Monday
+  ('hra-28', 'horse-4', 3, '10:00'::TIME, '14:00'::TIME, TRUE);  -- Wednesday
 
 -- DevThunder: Tue/Thu/Fri 15:00-18:00
 INSERT INTO horse_recurring_availability (id, horse_id, day_of_week, start_time, end_time, active) VALUES
-  ('hra-14', 'horse-5', 2, '15:00'::TIME, '18:00'::TIME, TRUE),  -- Tuesday
-  ('hra-15', 'horse-5', 4, '15:00'::TIME, '18:00'::TIME, TRUE),  -- Thursday
-  ('hra-16', 'horse-5', 5, '15:00'::TIME, '18:00'::TIME, TRUE);  -- Friday
+  ('hra-29', 'horse-5', 2, '15:00'::TIME, '18:00'::TIME, TRUE),  -- Tuesday
+  ('hra-30', 'horse-5', 4, '15:00'::TIME, '18:00'::TIME, TRUE),  -- Thursday
+  ('hra-31', 'horse-5', 5, '15:00'::TIME, '18:00'::TIME, TRUE);  -- Friday
 
 -- DevSpirit: Mon/Wed/Fri 10:00-14:00
 INSERT INTO horse_recurring_availability (id, horse_id, day_of_week, start_time, end_time, active) VALUES
-  ('hra-17', 'horse-6', 1, '10:00'::TIME, '14:00'::TIME, TRUE),  -- Monday
-  ('hra-18', 'horse-6', 3, '10:00'::TIME, '14:00'::TIME, TRUE),  -- Wednesday
-  ('hra-19', 'horse-6', 5, '10:00'::TIME, '14:00'::TIME, TRUE);  -- Friday
+  ('hra-32', 'horse-6', 1, '10:00'::TIME, '14:00'::TIME, TRUE),  -- Monday
+  ('hra-33', 'horse-6', 3, '10:00'::TIME, '14:00'::TIME, TRUE),  -- Wednesday
+  ('hra-34', 'horse-6', 5, '10:00'::TIME, '14:00'::TIME, TRUE);  -- Friday
 
 -- Blocked Times (examples of date-specific exceptions)
 -- NOTE: Using future dates for development
