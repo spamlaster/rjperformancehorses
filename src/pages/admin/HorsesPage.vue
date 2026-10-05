@@ -40,8 +40,8 @@
             </div>
             <div>
               <label class="flex items-center gap-2">
-                <input v-model="formData.available" type="checkbox" />
-                <span>Available</span>
+                <input v-model="formData.active" type="checkbox" />
+                <span>Active</span>
               </label>
             </div>
 
@@ -74,7 +74,7 @@
                 <td class="p-4 text-sm">{{ horse.age || '—' }}</td>
                 <td class="p-4"><span class="badge badge-info">{{ horse.experienceLevel }}</span></td>
                 <td class="p-4">
-                  <span v-if="horse.available" class="badge badge-success">Yes</span>
+                  <span v-if="horse.active" class="badge badge-success">Yes</span>
                   <span v-else class="badge badge-error">No</span>
                 </td>
                 <td class="p-4 flex gap-2">
@@ -114,7 +114,7 @@ const formData = ref<Partial<Horse>>({
   breed: '',
   age: undefined,
   experienceLevel: 'beginner_friendly',
-  available: true,
+  active: true,
 })
 
 const editHorse = (horse: Horse) => {
@@ -131,15 +131,23 @@ const closeForm = () => {
     breed: '',
     age: undefined,
     experienceLevel: 'beginner_friendly',
-    available: true,
+    active: true,
   }
 }
 
-const saveHorse = () => {
+const saveHorse = async () => {
   if (editingHorse.value) {
-    adminStore.updateHorse(editingHorse.value.id, formData.value)
+    const success = await adminStore.updateHorseLocal(editingHorse.value.id, formData.value)
+    if (!success) {
+      alert('Failed to update horse. Please try again.')
+      return
+    }
   } else {
-    adminStore.addHorse(formData.value as Omit<Horse, 'id' | 'createdAt' | 'updatedAt'>)
+    const newHorse = await adminStore.addHorse(formData.value as Omit<Horse, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>)
+    if (!newHorse) {
+      alert('Failed to create horse. Please try again.')
+      return
+    }
   }
   closeForm()
 }
