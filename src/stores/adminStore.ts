@@ -1,110 +1,178 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { Customer, Rider, Horse, Booking, LessonType } from '@/types/models'
-import {
-  mockCustomers,
-  mockRiders,
-  mockHorses,
-  mockLessonTypes,
-  mockBookings,
-} from '@/data/mockData'
+import { ref, computed } from 'vue'
+import type { Customer, Rider, Horse, Booking, LessonType, InstructorAvailability, HorseRecurringAvailability, BlockedTime } from '@/types/models'
+import * as supabaseService from '@/services/supabaseService'
 
+/**
+ * Admin Store - Phase 2C
+ *
+ * Manages admin application state with real Supabase persistence.
+ * All CRUD operations persist to PostgreSQL via Supabase service layer.
+ */
 export const useAdminStore = defineStore('admin', () => {
-  const customers = ref<Customer[]>([...mockCustomers])
-  const riders = ref<Rider[]>([...mockRiders])
-  const horses = ref<Horse[]>([...mockHorses])
-  const lessonTypes = ref<LessonType[]>([...mockLessonTypes])
-  const bookings = ref<Booking[]>([...mockBookings])
+  // Data from Supabase
+  const customers = ref<Customer[]>([])
+  const riders = ref<Rider[]>([])
+  const horses = ref<Horse[]>([])
+  const lessonTypes = ref<LessonType[]>([])
+  const bookings = ref<Booking[]>([])
+  const instructorAvailability = ref<InstructorAvailability[]>([])
+  const horseRecurringAvailability = ref<HorseRecurringAvailability[]>([])
+  const blockedTimes = ref<BlockedTime[]>([])
 
-  // Riders CRUD
-  function addRider(rider: Omit<Rider, 'id' | 'createdAt' | 'updatedAt'>) {
-    const newRider: Rider = {
-      ...rider,
-      id: `rider-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  // Loading and error states
+  const isLoading = ref(false)
+  const error = ref<string | null>(null)
+
+  const hasError = computed(() => !!error.value)
+
+  // Initialize: Load all data from Supabase
+  async function loadAllData() {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const [
+        customersData,
+        ridersData,
+        horsesData,
+        lessonTypesData,
+        bookingsData,
+        instAvailData,
+        horseAvailData,
+        blockedTimesData,
+      ] = await Promise.all([
+        supabaseService.fetchCustomers(),
+        supabaseService.fetchRiders(),
+        supabaseService.fetchHorses(true),
+        supabaseService.fetchLessonTypes(false),
+        supabaseService.fetchBookings(),
+        supabaseService.fetchInstructorAvailability(),
+        supabaseService.fetchHorseRecurringAvailability(),
+        supabaseService.fetchBlockedTimes(),
+      ])
+
+      customers.value = customersData
+      riders.value = ridersData
+      horses.value = horsesData
+      lessonTypes.value = lessonTypesData
+      bookings.value = bookingsData
+      instructorAvailability.value = instAvailData
+      horseRecurringAvailability.value = horseAvailData
+      blockedTimes.value = blockedTimesData
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to load data from Supabase'
+      console.error('Error loading admin data:', err)
+    } finally {
+      isLoading.value = false
     }
-    riders.value.push(newRider)
-    return newRider
   }
 
-  function updateRider(id: string, updates: Partial<Rider>) {
-    const index = riders.value.findIndex(r => r.id === id)
-    if (index !== -1) {
-      riders.value[index] = {
-        ...riders.value[index],
-        ...updates,
-        updatedAt: new Date().toISOString(),
+  // ============================================================
+  // Customers
+  // ============================================================
+  async function addCustomer(customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>) {
+    const newCustomer = await supabaseService.createCustomer(customer)
+    if (newCustomer) {
+      customers.value.push(newCustomer)
+      return newCustomer
+    }
+    error.value = 'Failed to create customer'
+    return null
+  }
+
+  async function updateCustomerLocal(id: string, updates: Partial<Customer>) {
+    const success = await supabaseService.updateCustomer(id, updates)
+    if (success) {
+      const index = customers.value.findIndex(c => c.id === id)
+      if (index !== -1) {
+        customers.value[index] = {
+          ...customers.value[index],
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        }
       }
+      return true
     }
+    error.value = 'Failed to update customer'
+    return false
   }
 
-  function deleteRider(id: string) {
-    riders.value = riders.value.filter(r => r.id !== id)
+  function getCustomer(id: string) {
+    return customers.value.find(c => c.id === id)
+  }
+
+  // ============================================================
+  // Riders
+  // ============================================================
+  async function addRider(rider: Omit<Rider, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>) {
+    const newRider = await supabaseService.createRider(rider)
+    if (newRider) {
+      riders.value.push(newRider)
+      return newRider
+    }
+    error.value = 'Failed to create rider'
+    return null
+  }
+
+  async function updateRiderLocal(id: string, updates: Partial<Rider>) {
+    const success = await supabaseService.updateRider(id, updates)
+    if (success) {
+      const index = riders.value.findIndex(r => r.id === id)
+      if (index !== -1) {
+        riders.value[index] = {
+          ...riders.value[index],
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        }
+      }
+      return true
+    }
+    error.value = 'Failed to update rider'
+    return false
   }
 
   function getRider(id: string) {
     return riders.value.find(r => r.id === id)
   }
 
-  // Horses CRUD
-  function addHorse(horse: Omit<Horse, 'id' | 'createdAt' | 'updatedAt'>) {
-    const newHorse: Horse = {
-      ...horse,
-      id: `horse-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  // ============================================================
+  // Horses
+  // ============================================================
+  async function addHorse(horse: Omit<Horse, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>) {
+    const newHorse = await supabaseService.createHorse(horse)
+    if (newHorse) {
+      horses.value.push(newHorse)
+      return newHorse
     }
-    horses.value.push(newHorse)
-    return newHorse
+    error.value = 'Failed to create horse'
+    return null
   }
 
-  function updateHorse(id: string, updates: Partial<Horse>) {
-    const index = horses.value.findIndex(h => h.id === id)
-    if (index !== -1) {
-      horses.value[index] = {
-        ...horses.value[index],
-        ...updates,
-        updatedAt: new Date().toISOString(),
+  async function updateHorseLocal(id: string, updates: Partial<Horse>) {
+    const success = await supabaseService.updateHorse(id, updates)
+    if (success) {
+      const index = horses.value.findIndex(h => h.id === id)
+      if (index !== -1) {
+        horses.value[index] = {
+          ...horses.value[index],
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        }
       }
+      return true
     }
-  }
-
-  function deleteHorse(id: string) {
-    horses.value = horses.value.filter(h => h.id !== id)
+    error.value = 'Failed to update horse'
+    return false
   }
 
   function getHorse(id: string) {
     return horses.value.find(h => h.id === id)
   }
 
-  // Bookings CRUD
-  function addBooking(booking: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>) {
-    const newBooking: Booking = {
-      ...booking,
-      id: `booking-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    bookings.value.push(newBooking)
-    return newBooking
-  }
-
-  function updateBooking(id: string, updates: Partial<Booking>) {
-    const index = bookings.value.findIndex(b => b.id === id)
-    if (index !== -1) {
-      bookings.value[index] = {
-        ...bookings.value[index],
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      }
-    }
-  }
-
-  function deleteBooking(id: string) {
-    bookings.value = bookings.value.filter(b => b.id !== id)
-  }
-
+  // ============================================================
+  // Bookings (read-only for now)
+  // ============================================================
   function getBooking(id: string) {
     return bookings.value.find(b => b.id === id)
   }
@@ -124,56 +192,93 @@ export const useAdminStore = defineStore('admin', () => {
     })
   }
 
-  // Customers
-  function addCustomer(customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) {
-    const newCustomer: Customer = {
-      ...customer,
-      id: `customer-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  // ============================================================
+  // Availability
+  // ============================================================
+  async function updateInstructorAvailabilityLocal(id: string, updates: Partial<InstructorAvailability>) {
+    const success = await supabaseService.updateInstructorAvailability(id, updates)
+    if (success) {
+      const index = instructorAvailability.value.findIndex(a => a.id === id)
+      if (index !== -1) {
+        instructorAvailability.value[index] = {
+          ...instructorAvailability.value[index],
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        }
+      }
+      return true
     }
-    customers.value.push(newCustomer)
-    return newCustomer
+    error.value = 'Failed to update instructor availability'
+    return false
   }
 
-  function getCustomer(id: string) {
-    return customers.value.find(c => c.id === id)
+  async function updateHorseAvailabilityLocal(id: string, updates: Partial<HorseRecurringAvailability>) {
+    const success = await supabaseService.updateHorseRecurringAvailability(id, updates)
+    if (success) {
+      const index = horseRecurringAvailability.value.findIndex(a => a.id === id)
+      if (index !== -1) {
+        horseRecurringAvailability.value[index] = {
+          ...horseRecurringAvailability.value[index],
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        }
+      }
+      return true
+    }
+    error.value = 'Failed to update horse availability'
+    return false
   }
 
-  // Note: Availability queries and blocking will be implemented in Phase 2
-  // They will use instructor_availability, horse_recurring_availability, and blocked_times tables
-  function getAvailableSlots(date: string) {
-    // Phase 1: Return empty array as placeholder
-    // Phase 2: Will query database for available times based on:
-    // - instructor_availability
-    // - horse_recurring_availability
-    // - blocked_times exceptions
-    // - existing bookings
-    return []
+  async function addBlockedTime(blockedTime: Omit<BlockedTime, 'id' | 'createdAt' | 'updatedAt'>) {
+    const newBlockedTime = await supabaseService.createBlockedTime(blockedTime)
+    if (newBlockedTime) {
+      blockedTimes.value.push(newBlockedTime)
+      return newBlockedTime
+    }
+    error.value = 'Failed to create blocked time'
+    return null
   }
 
   return {
+    // State
     customers,
     riders,
     horses,
     lessonTypes,
     bookings,
+    instructorAvailability,
+    horseRecurringAvailability,
+    blockedTimes,
+    isLoading,
+    error,
+    hasError,
+
+    // Data loading
+    loadAllData,
+
+    // Customer operations
     addCustomer,
+    updateCustomerLocal,
     getCustomer,
+
+    // Rider operations
     addRider,
-    updateRider,
-    deleteRider,
+    updateRiderLocal,
     getRider,
+
+    // Horse operations
     addHorse,
-    updateHorse,
-    deleteHorse,
+    updateHorseLocal,
     getHorse,
-    addBooking,
-    updateBooking,
-    deleteBooking,
+
+    // Booking queries (read-only)
     getBooking,
     getBookingsForDate,
     getUpcomingBookings,
-    getAvailableSlots,
+
+    // Availability operations
+    updateInstructorAvailabilityLocal,
+    updateHorseAvailabilityLocal,
+    addBlockedTime,
   }
 })
