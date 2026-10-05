@@ -239,6 +239,19 @@ export const useAdminStore = defineStore('admin', () => {
     return null
   }
 
+  async function deleteBlockedTime(id: string) {
+    const success = await supabaseService.deleteBlockedTime(id)
+    if (success) {
+      const index = blockedTimes.value.findIndex(b => b.id === id)
+      if (index !== -1) {
+        blockedTimes.value.splice(index, 1)
+      }
+      return true
+    }
+    error.value = 'Failed to delete blocked time'
+    return false
+  }
+
   return {
     // State
     customers,
@@ -280,5 +293,6 @@ export const useAdminStore = defineStore('admin', () => {
     updateInstructorAvailabilityLocal,
     updateHorseAvailabilityLocal,
     addBlockedTime,
+    deleteBlockedTime,
   }
 })

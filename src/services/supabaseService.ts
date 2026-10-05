@@ -524,3 +524,17 @@ export async function createBlockedTime(blockedTime: Omit<BlockedTime, 'id' | 'c
     updatedAt: data.updated_at,
   }
 }
+
+export async function deleteBlockedTime(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('blocked_times')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error deleting blocked time:', error)
+    return false
+  }
+
+  return true
+}
