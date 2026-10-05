@@ -94,13 +94,13 @@ export interface Booking {
   id: string;
   customerId: string;
   lessonTypeId: string;
-  horseid: string;
+  horseId: string;
   startTime: string; // ISO 8601 datetime
   endTime: string; // ISO 8601 datetime
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
   bookingType: 'regular' | 'trial' | 'makeup' | 'recurring';
   recurringLessonId?: string; // FK to recurring_lessons
-  version: number; // For optimistic locking (Phase 2F)
+  version?: number; // For optimistic locking (Phase 2F)
   notes?: string;
   createdAt: string;
   updatedAt: string;

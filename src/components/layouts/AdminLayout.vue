@@ -83,12 +83,26 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { useAdminStore } from '@/stores/adminStore'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const adminStore = useAdminStore()
+
+const dataLoaded = ref(false)
+
+// Load admin data once when entering admin area
+onMounted(async () => {
+  // Only load if not already loaded (singleton pattern)
+  if (!dataLoaded.value && adminStore.customers.length === 0 && adminStore.riders.length === 0) {
+    await adminStore.loadAllData()
+  }
+  dataLoaded.value = true
+})
 
 const isActive = (path: string) => {
   return route.path === path || route.path.startsWith(path + '/')
