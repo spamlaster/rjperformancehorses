@@ -136,6 +136,19 @@ export const useAdminStore = defineStore('admin', () => {
     return riders.value.find(r => r.id === id)
   }
 
+  async function deleteRider(id: string) {
+    const success = await supabaseService.deleteRider(id)
+    if (success) {
+      const index = riders.value.findIndex(r => r.id === id)
+      if (index !== -1) {
+        riders.value.splice(index, 1)
+      }
+      return true
+    }
+    error.value = 'Failed to delete rider'
+    return false
+  }
+
   // ============================================================
   // Horses
   // ============================================================
@@ -168,6 +181,19 @@ export const useAdminStore = defineStore('admin', () => {
 
   function getHorse(id: string) {
     return horses.value.find(h => h.id === id)
+  }
+
+  async function deleteHorse(id: string) {
+    const success = await supabaseService.deleteHorse(id)
+    if (success) {
+      const index = horses.value.findIndex(h => h.id === id)
+      if (index !== -1) {
+        horses.value.splice(index, 1)
+      }
+      return true
+    }
+    error.value = 'Failed to delete horse'
+    return false
   }
 
   // ============================================================
@@ -278,11 +304,13 @@ export const useAdminStore = defineStore('admin', () => {
     addRider,
     updateRiderLocal,
     getRider,
+    deleteRider,
 
     // Horse operations
     addHorse,
     updateHorseLocal,
     getHorse,
+    deleteHorse,
 
     // Booking queries (read-only)
     getBooking,

@@ -171,6 +171,20 @@ export async function updateHorse(id: string, updates: Partial<Horse>): Promise<
   return true
 }
 
+export async function deleteHorse(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('horses')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error deleting horse:', error)
+    return false
+  }
+
+  return true
+}
+
 // ============================================================
 // CUSTOMERS
 // ============================================================
@@ -347,6 +361,20 @@ export async function updateRider(id: string, updates: Partial<Rider>): Promise<
 
   if (error) {
     console.error('Error updating rider:', error)
+    return false
+  }
+
+  return true
+}
+
+export async function deleteRider(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('riders')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error deleting rider:', error)
     return false
   }
 

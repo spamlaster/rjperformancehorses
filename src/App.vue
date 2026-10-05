@@ -4,13 +4,19 @@
       <p class="text-gray-600">Initializing...</p>
     </div>
   </div>
-  <RouterView v-else />
+  <template v-else>
+    <RouterView />
+    <NotificationCenter />
+    <ConfirmDialog />
+  </template>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import NotificationCenter from '@/components/notifications/NotificationCenter.vue'
+import ConfirmDialog from '@/components/dialogs/ConfirmDialog.vue'
 
 const authStore = useAuthStore()
 const authReady = ref(false)

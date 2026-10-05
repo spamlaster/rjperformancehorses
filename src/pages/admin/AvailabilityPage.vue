@@ -268,9 +268,13 @@
 import { ref, reactive, watch } from 'vue'
 import AdminLayout from '@/components/layouts/AdminLayout.vue'
 import { useAdminStore } from '@/stores/adminStore'
+import { useNotification } from '@/composables/useNotification'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import type { InstructorAvailability, HorseRecurringAvailability, BlockedTime } from '@/types/models'
 
 const adminStore = useAdminStore()
+const { success, error } = useNotification()
+const { confirm } = useConfirmDialog()
 
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -319,11 +323,11 @@ const saveInstructorSlot = async (slotId: string) => {
   const updates = editingInstructor[slotId]
   if (!updates) return
 
-  const success = await adminStore.updateInstructorAvailabilityLocal(slotId, updates)
-  if (success) {
-    alert('Instructor availability updated')
+  const result = await adminStore.updateInstructorAvailabilityLocal(slotId, updates)
+  if (result) {
+    success('Availability updated')
   } else {
-    alert('Failed to update instructor availability')
+    error('Unable to update availability')
   }
 }
 
@@ -331,17 +335,17 @@ const saveHorseSlot = async (slotId: string) => {
   const updates = editingHorse[slotId]
   if (!updates) return
 
-  const success = await adminStore.updateHorseAvailabilityLocal(slotId, updates)
-  if (success) {
-    alert('Horse availability updated')
+  const result = await adminStore.updateHorseAvailabilityLocal(slotId, updates)
+  if (result) {
+    success('Horse availability updated')
   } else {
-    alert('Failed to update horse availability')
+    error('Unable to update horse availability')
   }
 }
 
 const addBlockedTime = async () => {
   if (!blockForm.value.date || !blockForm.value.startTime || !blockForm.value.endTime) {
-    alert('Please fill in date and times')
+    error('Please fill in date and times')
     return
   }
 
@@ -356,20 +360,27 @@ const addBlockedTime = async () => {
   const result = await adminStore.addBlockedTime(newBlock)
   if (result) {
     blockForm.value = { horseId: '', date: '', startTime: '', endTime: '', reason: '' }
-    alert('Blocked time added')
+    success('Blocked time added')
   } else {
-    alert('Failed to add blocked time')
+    error('Unable to add blocked time')
   }
 }
 
-const deleteBlockedTime = async (blockId: string) => {
-  if (!confirm('Delete this blocked time?')) return
-
-  const success = await adminStore.deleteBlockedTime(blockId)
-  if (success) {
-    alert('Blocked time deleted')
-  } else {
-    alert('Failed to delete blocked time')
-  }
+const deleteBlockedTime = (blockId: string) => {
+  confirm({
+    title: 'Delete Blocked Time',
+    message: 'Are you sure? This cannot be undone.',
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    isDangerous: true,
+    onConfirm: async () => {
+      const result = await adminStore.deleteBlockedTime(blockId)
+      if (result) {
+        success('Blocked time removed')
+      } else {
+        error('Unable to delete blocked time')
+      }
+    },
+  })
 }
 </script>

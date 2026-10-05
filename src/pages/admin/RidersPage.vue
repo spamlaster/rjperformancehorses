@@ -96,9 +96,13 @@
 import { ref } from 'vue'
 import AdminLayout from '@/components/layouts/AdminLayout.vue'
 import { useAdminStore } from '@/stores/adminStore'
+import { useNotification } from '@/composables/useNotification'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import type { Rider } from '@/types/models'
 
 const adminStore = useAdminStore()
+const { success, error } = useNotification()
+const { confirm } = useConfirmDialog()
 const showAddForm = ref(false)
 const editingRider = ref<Rider | null>(null)
 const formData = ref<Partial<Rider>>({
@@ -127,18 +131,41 @@ const closeForm = () => {
   }
 }
 
-const saveRider = () => {
+const saveRider = async () => {
   if (editingRider.value) {
-    adminStore.updateRider(editingRider.value.id, formData.value)
+    const result = await adminStore.updateRiderLocal(editingRider.value.id, formData.value)
+    if (!result) {
+      error('Unable to update rider')
+      return
+    }
+    success('Rider updated')
   } else {
-    adminStore.addRider(formData.value as Omit<Rider, 'id' | 'createdAt' | 'updatedAt'>)
+    const newRider = await adminStore.addRider(formData.value as Omit<Rider, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>)
+    if (!newRider) {
+      error('Unable to create rider')
+      return
+    }
+    success('Rider created')
   }
   closeForm()
 }
 
 const deleteRiderConfirm = (id: string) => {
-  if (confirm('Are you sure you want to delete this rider?')) {
-    adminStore.deleteRider(id)
-  }
+  const rider = adminStore.getRider(id)
+  confirm({
+    title: 'Delete Rider',
+    message: `Are you sure? This will permanently delete ${rider?.firstName} ${rider?.lastName} from the system.`,
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    isDangerous: true,
+    onConfirm: async () => {
+      const result = await adminStore.deleteRider(id)
+      if (result) {
+        success('Rider deleted')
+      } else {
+        error('Unable to delete rider')
+      }
+    },
+  })
 }
 </script>

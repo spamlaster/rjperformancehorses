@@ -104,9 +104,13 @@
 import { ref } from 'vue'
 import AdminLayout from '@/components/layouts/AdminLayout.vue'
 import { useAdminStore } from '@/stores/adminStore'
+import { useNotification } from '@/composables/useNotification'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import type { Horse } from '@/types/models'
 
 const adminStore = useAdminStore()
+const { success, error } = useNotification()
+const { confirm } = useConfirmDialog()
 const showAddForm = ref(false)
 const editingHorse = ref<Horse | null>(null)
 const formData = ref<Partial<Horse>>({
@@ -137,24 +141,39 @@ const closeForm = () => {
 
 const saveHorse = async () => {
   if (editingHorse.value) {
-    const success = await adminStore.updateHorseLocal(editingHorse.value.id, formData.value)
-    if (!success) {
-      alert('Failed to update horse. Please try again.')
+    const result = await adminStore.updateHorseLocal(editingHorse.value.id, formData.value)
+    if (!result) {
+      error('Unable to update horse')
       return
     }
+    success('Horse updated')
   } else {
     const newHorse = await adminStore.addHorse(formData.value as Omit<Horse, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>)
     if (!newHorse) {
-      alert('Failed to create horse. Please try again.')
+      error('Unable to create horse')
       return
     }
+    success('Horse created')
   }
   closeForm()
 }
 
 const deleteHorseConfirm = (id: string) => {
-  if (confirm('Are you sure you want to delete this horse?')) {
-    adminStore.deleteHorse(id)
-  }
+  const horse = adminStore.getHorse(id)
+  confirm({
+    title: 'Delete Horse',
+    message: `Are you sure? This will permanently delete ${horse?.name || 'this horse'} from the system.`,
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    isDangerous: true,
+    onConfirm: async () => {
+      const result = await adminStore.deleteHorse(id)
+      if (result) {
+        success('Horse deleted')
+      } else {
+        error('Unable to delete horse')
+      }
+    },
+  })
 }
 </script>
