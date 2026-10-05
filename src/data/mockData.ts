@@ -1,5 +1,111 @@
-import { Rider, Horse, LessonType, TimeSlot, Booking, Waiver } from '@/types/models'
+import { Customer, Rider, Horse, LessonType, BlockedTime, Booking, WaiverVersion } from '@/types/models'
 import { addDays, format } from 'date-fns'
+
+// CUSTOMERS
+// Parent/Guardian accounts that manage riders
+export const mockCustomers: Customer[] = [
+  {
+    id: 'customer-1',
+    firstName: 'Sarah',
+    lastName: 'Johnson',
+    email: 'sarah.johnson@example.com',
+    phone: '555-123-4567',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'customer-2',
+    firstName: 'Rebecca',
+    lastName: 'Jensen',
+    email: 'rebecca.jensen@example.com',
+    phone: '555-234-5678',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'customer-3',
+    firstName: 'Michael',
+    lastName: 'Brown',
+    email: 'michael.brown@example.com',
+    phone: '555-345-6789',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'customer-4',
+    firstName: 'Lisa',
+    lastName: 'Smith',
+    email: 'lisa.smith@example.com',
+    phone: '555-456-7890',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+]
+
+// RIDERS
+// People who actually ride
+// Example: Emma & Hailey (children) belong to customer-2 (Rebecca)
+// Michael (customer-3) is also a rider (self-booking adult)
+export const mockRiders: Rider[] = [
+  {
+    id: 'rider-1',
+    customerId: 'customer-1',
+    firstName: 'Sarah',
+    lastName: 'Johnson',
+    email: 'sarah.johnson@example.com',
+    phone: '555-123-4567',
+    dateOfBirth: '1995-06-15',
+    experienceLevel: 'intermediate',
+    address: '123 Main St, Town, State',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'rider-2',
+    customerId: 'customer-2',
+    firstName: 'Emma',
+    lastName: 'Jensen',
+    email: 'emma@example.com',
+    dateOfBirth: '2010-03-22',
+    experienceLevel: 'beginner',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'rider-3',
+    customerId: 'customer-2',
+    firstName: 'Hailey',
+    lastName: 'Jensen',
+    email: 'hailey@example.com',
+    dateOfBirth: '2012-08-10',
+    experienceLevel: 'beginner',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'rider-4',
+    customerId: 'customer-3',
+    firstName: 'Michael',
+    lastName: 'Brown',
+    email: 'michael.brown@example.com',
+    phone: '555-345-6789',
+    dateOfBirth: '1988-11-05',
+    experienceLevel: 'advanced',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'rider-5',
+    customerId: 'customer-4',
+    firstName: 'Ava',
+    lastName: 'Smith',
+    email: 'ava@example.com',
+    dateOfBirth: '2008-01-18',
+    experienceLevel: 'intermediate',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+]
 
 export const mockLessonTypes: LessonType[] = [
   {
@@ -80,7 +186,7 @@ export const mockHorses: Horse[] = [
     height: '15.2hh',
     temperament: 'Gentle and steady, great for beginners',
     experienceLevel: 'beginner_friendly',
-    available: true,
+    active: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -93,7 +199,7 @@ export const mockHorses: Horse[] = [
     height: '15.0hh',
     temperament: 'Calm and experienced, perfect for lessons',
     experienceLevel: 'beginner_friendly',
-    available: true,
+    active: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -106,7 +212,7 @@ export const mockHorses: Horse[] = [
     height: '14.3hh',
     temperament: 'Energetic and responsive',
     experienceLevel: 'intermediate',
-    available: true,
+    active: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -119,7 +225,7 @@ export const mockHorses: Horse[] = [
     height: '15.1hh',
     temperament: 'Athletic and focused',
     experienceLevel: 'advanced',
-    available: true,
+    active: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -132,7 +238,7 @@ export const mockHorses: Horse[] = [
     height: '14.2hh',
     temperament: 'Sweet and spirited',
     experienceLevel: 'intermediate',
-    available: true,
+    active: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -145,132 +251,46 @@ export const mockHorses: Horse[] = [
     height: '15.0hh',
     temperament: 'Quick learner, barrel racing specialist',
     experienceLevel: 'advanced',
-    available: true,
+    active: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
 ]
 
-export const mockRiders: Rider[] = [
-  {
-    id: 'rider-1',
-    firstName: 'Sarah',
-    lastName: 'Johnson',
-    email: 'sarah@example.com',
-    phone: '555-123-4567',
-    dateOfBirth: '1995-06-15',
-    experienceLevel: 'intermediate',
-    address: '123 Main St, Town, State',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'rider-2',
-    firstName: 'Emma',
-    lastName: 'Jensen',
-    email: 'emma@example.com',
-    phone: '555-234-5678',
-    dateOfBirth: '2010-03-22',
-    experienceLevel: 'beginner',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'rider-3',
-    firstName: 'Hailey',
-    lastName: 'Jensen',
-    email: 'hailey@example.com',
-    phone: '555-234-5678',
-    dateOfBirth: '2012-08-10',
-    experienceLevel: 'beginner',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'rider-4',
-    firstName: 'Michael',
-    lastName: 'Brown',
-    email: 'michael@example.com',
-    phone: '555-345-6789',
-    dateOfBirth: '1988-11-05',
-    experienceLevel: 'advanced',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'rider-5',
-    firstName: 'Ava',
-    lastName: 'Smith',
-    email: 'ava@example.com',
-    phone: '555-456-7890',
-    dateOfBirth: '2008-01-18',
-    experienceLevel: 'intermediate',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
-
-export const generateMockTimeSlots = (): TimeSlot[] => {
-  const slots: TimeSlot[] = []
-  const startDate = new Date()
-  const horseIds = mockHorses.map(h => h.id)
-
-  for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
-    const date = format(addDays(startDate, dayOffset), 'yyyy-MM-dd')
-    const dayOfWeek = new Date(date).getDay()
-
-    if (dayOfWeek === 0 || dayOfWeek === 6) continue // Skip weekends
-
-    horseIds.forEach((horseid, index) => {
-      const baseHour = 14 // 2 PM
-      const slotCount = 2 + (index % 2)
-
-      for (let i = 0; i < slotCount; i++) {
-        const startHour = baseHour + i
-        const startTime = `${String(startHour).padStart(2, '0')}:00`
-        const endTime = `${String(startHour + 1).padStart(2, '0')}:00`
-
-        if (startHour < 18) {
-          slots.push({
-            id: `slot-${date}-${horseid}-${i}`,
-            horseid,
-            date,
-            startTime,
-            endTime,
-            status: 'available',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          })
-        }
-      }
-    })
-  }
-
-  return slots
-}
-
+// SAMPLE BOOKINGS (updated to include customerId)
 export const mockBookings: Booking[] = [
   {
     id: 'booking-1',
+    customerId: 'customer-1',
     lessonTypeId: 'lesson-1',
-    riderId: 'rider-1',
     horseid: 'horse-1',
     startTime: addDays(new Date(), 1).toISOString(),
     endTime: addDays(new Date(), 1).toISOString(),
     status: 'confirmed',
+    bookingType: 'regular',
+    version: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
 ]
 
-export const mockWaivers: Waiver[] = [
+// SAMPLE WAIVERS
+export const mockWaivers: WaiverVersion[] = [
   {
     id: 'waiver-1',
-    riderId: 'rider-1',
-    waiverVersion: 1,
-    isSigned: true,
-    signedAt: new Date().toISOString(),
-    signerName: 'Sarah Johnson',
+    title: 'Riding Waiver and Release of Liability',
+    version: 1,
+    content: `RELEASE OF LIABILITY
+
+I acknowledge that horseback riding involves inherent risks including but not limited to falls, injuries, and property damage. I accept full responsibility for these risks.
+
+I confirm that I am in good physical health and able to participate in this activity. I have disclosed any medical conditions that may affect my ability to ride.
+
+I release and hold harmless RJ Performance Horses, its owners, instructors, employees, and agents from any liability for injuries or damages sustained during lessons or activities.
+
+I understand that helmets are required and agree to follow all safety instructions.`,
+    effectiveDate: '2024-10-01',
+    active: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },

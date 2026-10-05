@@ -1,10 +1,23 @@
 // Core domain models for RJ Performance Horses
 
-export interface Rider {
+export interface Customer {
   id: string;
+  authUserId?: string; // Will reference Supabase auth.users.id in Phase 2
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface Rider {
+  id: string;
+  customerId?: string; // FK to customer (nullable for migration)
+  firstName: string;
+  lastName: string;
+  email?: string;
   phone?: string;
   dateOfBirth?: string;
   address?: string;
@@ -14,6 +27,7 @@ export interface Rider {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
 }
 
 export interface Horse {
@@ -25,10 +39,11 @@ export interface Horse {
   height?: string;
   temperament?: string;
   experienceLevel: 'beginner_friendly' | 'intermediate' | 'advanced' | 'competition';
-  available: boolean;
+  active: boolean; // Renamed from 'available' for clarity
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
 }
 
 export interface LessonType {
@@ -43,54 +58,80 @@ export interface LessonType {
   updatedAt: string;
 }
 
-export interface TimeSlot {
+export interface InstructorAvailability {
   id: string;
-  horseid: string;
+  dayOfWeek: number; // 0=Sunday, 1=Monday, ..., 6=Saturday
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HorseRecurringAvailability {
+  id: string;
+  horseId: string;
+  dayOfWeek: number;
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlockedTime {
+  id: string;
+  horseId?: string; // NULL for instructor blocks
   date: string; // YYYY-MM-DD
   startTime: string; // HH:MM
   endTime: string; // HH:MM
-  status: 'available' | 'booked' | 'maintenance';
+  reason?: string; // "Vet appointment", "Farrier", etc.
   createdAt: string;
   updatedAt: string;
 }
 
 export interface Booking {
   id: string;
+  customerId: string;
   lessonTypeId: string;
-  riderId: string;
   horseid: string;
   startTime: string; // ISO 8601 datetime
   endTime: string; // ISO 8601 datetime
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  bookingType?: 'regular' | 'trial' | 'makeup' | 'recurring';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+  bookingType: 'regular' | 'trial' | 'makeup' | 'recurring';
+  recurringLessonId?: string; // FK to recurring_lessons
+  version: number; // For optimistic locking (Phase 2F)
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
 }
 
-export interface Waiver {
+export interface WaiverVersion {
   id: string;
-  riderId: string;
-  bookingId?: string;
-  waiverVersion: number;
-  signedAt?: string;
-  isSigned: boolean;
-  signerName?: string;
-  signerEmail?: string;
-  relationshipToRider?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AdminUser {
-  id: string;
-  email: string;
-  name?: string;
-  role: 'admin' | 'instructor' | 'staff';
+  title: string;
+  version: number;
+  content: string;
+  effectiveDate: string; // YYYY-MM-DD
   active: boolean;
-  lastLogin?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface WaiverAcceptance {
+  id: string;
+  waiverId: string;
+  customerId: string;
+  riderId: string;
+  bookingId?: string; // FK to booking that required this waiver
+  signerName: string;
+  signerEmail?: string;
+  relationshipToRider?: string; // "parent", "guardian", "self", etc.
+  acceptedAt: string; // ISO 8601 timestamp
+  signatureData?: string; // Base64 encoded image
+  notes?: string;
+  createdAt: string;
+  // No updatedAt: immutable record
 }
 
 export interface BookingWizardState {
@@ -101,3 +142,6 @@ export interface BookingWizardState {
   riderInfo: Partial<Rider>;
   waiverSigned: boolean;
 }
+
+// Note: Admin authentication will be handled by Supabase Auth in Phase 2
+// Do not create authentication-related types here

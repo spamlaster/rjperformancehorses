@@ -1,11 +1,37 @@
 <template>
   <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-    <!-- Progress Bar -->
-    <div class="h-2 bg-gray-200">
-      <div
-        class="h-full bg-accent-gold transition-all duration-300"
-        :style="{ width: `${(currentStep / totalSteps) * 100}%` }"
-      />
+    <!-- Step Indicators -->
+    <div class="bg-gradient-to-r from-dark-brown to-text-dark text-white p-6">
+      <div class="flex items-center justify-between max-w-md mx-auto mb-4">
+        <div
+          v-for="(step, index) in totalSteps"
+          :key="index"
+          class="flex flex-col items-center flex-1"
+        >
+          <div
+            :class="[
+              'w-10 h-10 rounded-full flex items-center justify-center font-bold mb-2 transition-all',
+              index < currentStep
+                ? 'bg-green-500'
+                : index === currentStep
+                ? 'bg-accent-gold text-text-dark'
+                : 'bg-gray-500'
+            ]"
+          >
+            {{ index < currentStep ? '✓' : index + 1 }}
+          </div>
+          <span class="text-xs font-medium text-center leading-tight">
+            {{ getStepLabel(index) }}
+          </span>
+        </div>
+      </div>
+      <!-- Progress Bar -->
+      <div class="h-1 bg-gray-700 rounded-full overflow-hidden">
+        <div
+          class="h-full bg-accent-gold transition-all duration-300"
+          :style="{ width: `${((currentStep + 1) / totalSteps) * 100}%` }"
+        />
+      </div>
     </div>
 
     <!-- Steps -->
@@ -303,5 +329,10 @@ const formatTime = (time: string) => {
 const formatDate = (date: string) => {
   if (!date) return ''
   return format(parseISO(date), 'MMMM dd, yyyy')
+}
+
+const getStepLabel = (index: number) => {
+  const labels = ['Lesson Type', 'Date & Time', 'Rider Info', 'Waiver', 'Confirm']
+  return labels[index] || ''
 }
 </script>

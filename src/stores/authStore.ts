@@ -1,64 +1,82 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { AdminUser } from '@/types/models'
 
+export interface AdminUser {
+  id: string
+  email: string
+  name?: string
+  role: 'admin' | 'instructor' | 'staff'
+}
+
+/**
+ * Authentication Store - PHASE 1 PLACEHOLDER
+ *
+ * This store will be replaced with Supabase Auth in Phase 2.
+ *
+ * IMPORTANT: No real authentication is implemented here.
+ * The login page and admin pages are UI placeholders only.
+ *
+ * Phase 2 will:
+ * - Remove this store entirely
+ * - Implement Supabase Auth (@supabase/supabase-js)
+ * - Use Supabase Session tokens instead of localStorage
+ * - Implement proper password hashing and security
+ *
+ * DO NOT ADD REAL CREDENTIALS, PASSWORDS, OR AUTHENTICATION LOGIC HERE.
+ */
 export const useAuthStore = defineStore('auth', () => {
   const currentUser = ref<AdminUser | null>(null)
-  const token = ref<string>(localStorage.getItem('authToken') || '')
+  const token = ref<string>('')
+  const isLoading = ref(false)
 
   const isAuthenticated = computed(() => !!token.value && !!currentUser.value)
 
-  // Demo user for Phase 1
-  const demoUser: AdminUser = {
-    id: 'admin-1',
-    email: 'admin@rjhorses.com',
-    name: 'Rylie Jensen',
-    role: 'admin',
-    active: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-
+  /**
+   * login - PLACEHOLDER ONLY
+   *
+   * Phase 1: Does not authenticate. Rejects all attempts.
+   * Phase 2: Will call Supabase Auth signInWithPassword
+   *
+   * For development/testing purposes only, you can manually set:
+   * const auth = useAuthStore()
+   * auth.currentUser = { id: 'test', email: 'test@example.com', role: 'admin' }
+   * auth.token = 'placeholder'
+   */
   function login(email: string, password: string) {
-    // Phase 1: Simple demo login
-    if (email === 'admin@rjhorses.com' && password === 'demo123') {
-      const demoToken = `token-${Date.now()}`
-      token.value = demoToken
-      currentUser.value = demoUser
-      localStorage.setItem('authToken', demoToken)
-      localStorage.setItem('currentUser', JSON.stringify(demoUser))
-      return true
-    }
+    console.warn('⚠️  Authentication not implemented. Awaiting Supabase integration in Phase 2.')
+    console.warn('⚠️  Admin login page is a UI placeholder only.')
     return false
   }
 
   function logout() {
-    token.value = ''
     currentUser.value = null
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('currentUser')
+    token.value = ''
   }
 
   function loadAuthFromStorage() {
-    const storedToken = localStorage.getItem('authToken')
-    const storedUser = localStorage.getItem('currentUser')
+    // Phase 1: Do not load from localStorage
+    // Phase 2: Will load Supabase session automatically
+  }
 
-    if (storedToken && storedUser) {
-      token.value = storedToken
-      try {
-        currentUser.value = JSON.parse(storedUser)
-      } catch (e) {
-        logout()
-      }
-    }
+  /**
+   * FOR DEVELOPMENT/TESTING ONLY
+   * Temporarily set auth state for UI testing
+   * Remove this before Phase 2 implementation
+   */
+  function setAuthForTesting(user: AdminUser, testToken: string) {
+    console.warn('⚠️  Using test auth. This will be removed in Phase 2.')
+    currentUser.value = user
+    token.value = testToken
   }
 
   return {
     currentUser,
     token,
     isAuthenticated,
+    isLoading,
     login,
     logout,
     loadAuthFromStorage,
+    setAuthForTesting,
   }
 })

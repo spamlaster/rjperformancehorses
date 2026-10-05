@@ -56,7 +56,95 @@
                             (or DB)    (Email)     (Calendar)
 ```
 
+## Data Model (Post-Pre-Phase-2 Cleanup)
+
+### Core Entities
+
+**Customers** (Account Holders)
+- Parent/guardian who books lessons
+- Can have multiple rider children
+- Adult customers may also be riders
+- Auth-ready: `auth_user_id` for Supabase integration
+
+**Riders** (Lesson Participants)
+- Person actually riding the horse
+- Belongs to a customer (FK)
+- One rider per customer (adult self-booking)
+- Multiple riders per customer (parent + children)
+
+**Horses** (Scheduling Resources)
+- Not necessarily owned by Rylie
+- Can be boarded/shared (tracked via horse_owners table)
+- Status: active/inactive (not just available/booked)
+- Lesson eligibility defined via horse_lesson_types
+
+**Lesson Types** (Products/Services)
+- Immutable pricing and duration
+- Difficulty levels and group size limits
+- Active flag for retiring lessons
+
+**Availability Model**
+- **Recurring base**: instructor_availability, horse_recurring_availability (weekly schedules)
+- **Exceptions**: blocked_times table (date-specific overrides)
+- **Bookings**: Individual occurrences, checked for conflicts
+
+**Bookings** (Scheduled Lessons)
+- Links customer, lesson type, horse, riders
+- Status: pending, confirmed, completed, cancelled, no_show
+- Version column for Phase 2 optimistic locking
+- Recurring lesson reference for scheduling rules
+
+**Waivers**
+- Versioned documents (active/inactive)
+- Acceptances are immutable audit records
+- Preserve exact version signed by customer
+- Link to booking for audit trail
+
+**Makeup Credits**
+- Issued from cancelled bookings
+- Track expiration and redemption
+- Redeemed via separate booking
+
+---
+
 ## Key Architectural Decisions
+
+### 2. No Admin User Table
+**Decision:** Remove admin_users table. Use Supabase Auth for admin authentication.
+
+**Rationale:**
+- Never store passwords in application tables
+- Supabase Auth handles secure hashing and session management
+- RLS policies determine admin access based on auth.users.id
+- Cleaner separation: auth = Supabase, authorization = RLS
+
+### 3. Customer-Rider Separation
+**Decision:** Separate customers (account holders) from riders (lesson participants).
+
+**Rationale:**
+- Parent/guardian books lessons for children
+- Adult can book for themselves (same person in both tables)
+- Siblings share one customer but are separate riders
+- Supports sibling lessons (two riders, one customer)
+- Future: group lesson pricing per customer
+
+### 4. Recurring Availability vs Exceptions
+**Decision:** Separate normal schedules from date-specific blocks.
+
+**Rationale:**
+- Instructor and horses have weekly recurring patterns
+- Special closures, vet appointments, competitions are exceptions
+- Queries check recurring schedules first, then blocked_times
+- Cleaner model than generating/maintaining daily slots
+
+### 5. Booking Centrality
+**Decision:** Bookings tie together all resources.
+
+**Rationale:**
+- Single source of truth for lesson occurrences
+- Booking = (customer, lesson_type, horse, riders, time_window)
+- booking_riders table handles 1-to-many (group lessons)
+- recurring_lesson_id links to rules without duplicating logic
 
 ### 1. Static Frontend Hosting
 **Decision:** Build frontend as a standalone SPA deployable to static hosting (GitHub Pages, Vercel, Netlify).
@@ -70,7 +158,7 @@
 **Implications:**
 - Backend API must be decoupled
 - All sensitive operations happen server-side
-- Authentication uses tokens (JWT preferred)
+- Authentication uses tokens (JWT via Supabase)
 
 ### 2. Type-Safe with TypeScript
 **Decision:** Use TypeScript throughout the codebase.

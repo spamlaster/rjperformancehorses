@@ -1,20 +1,20 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Rider, Horse, Booking, TimeSlot, LessonType } from '@/types/models'
+import type { Customer, Rider, Horse, Booking, LessonType } from '@/types/models'
 import {
+  mockCustomers,
   mockRiders,
   mockHorses,
   mockLessonTypes,
   mockBookings,
-  generateMockTimeSlots,
 } from '@/data/mockData'
 
 export const useAdminStore = defineStore('admin', () => {
+  const customers = ref<Customer[]>([...mockCustomers])
   const riders = ref<Rider[]>([...mockRiders])
   const horses = ref<Horse[]>([...mockHorses])
   const lessonTypes = ref<LessonType[]>([...mockLessonTypes])
   const bookings = ref<Booking[]>([...mockBookings])
-  const timeSlots = ref<TimeSlot[]>(generateMockTimeSlots())
 
   // Riders CRUD
   function addRider(rider: Omit<Rider, 'id' | 'createdAt' | 'updatedAt'>) {
@@ -124,35 +124,42 @@ export const useAdminStore = defineStore('admin', () => {
     })
   }
 
-  // Time Slots
+  // Customers
+  function addCustomer(customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) {
+    const newCustomer: Customer = {
+      ...customer,
+      id: `customer-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    customers.value.push(newCustomer)
+    return newCustomer
+  }
+
+  function getCustomer(id: string) {
+    return customers.value.find(c => c.id === id)
+  }
+
+  // Note: Availability queries and blocking will be implemented in Phase 2
+  // They will use instructor_availability, horse_recurring_availability, and blocked_times tables
   function getAvailableSlots(date: string) {
-    return timeSlots.value.filter(
-      slot => slot.date === date && slot.status === 'available'
-    )
-  }
-
-  function blockTimeSlot(slotId: string) {
-    const slot = timeSlots.value.find(s => s.id === slotId)
-    if (slot) {
-      slot.status = 'maintenance'
-      slot.updatedAt = new Date().toISOString()
-    }
-  }
-
-  function unblockTimeSlot(slotId: string) {
-    const slot = timeSlots.value.find(s => s.id === slotId)
-    if (slot && slot.status === 'maintenance') {
-      slot.status = 'available'
-      slot.updatedAt = new Date().toISOString()
-    }
+    // Phase 1: Return empty array as placeholder
+    // Phase 2: Will query database for available times based on:
+    // - instructor_availability
+    // - horse_recurring_availability
+    // - blocked_times exceptions
+    // - existing bookings
+    return []
   }
 
   return {
+    customers,
     riders,
     horses,
     lessonTypes,
     bookings,
-    timeSlots,
+    addCustomer,
+    getCustomer,
     addRider,
     updateRider,
     deleteRider,
@@ -168,7 +175,5 @@ export const useAdminStore = defineStore('admin', () => {
     getBookingsForDate,
     getUpcomingBookings,
     getAvailableSlots,
-    blockTimeSlot,
-    unblockTimeSlot,
   }
 })
