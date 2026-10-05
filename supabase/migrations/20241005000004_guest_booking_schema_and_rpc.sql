@@ -103,7 +103,7 @@ BEGIN
     RETURN jsonb_build_object('error', 'Customer email is required');
   END IF;
 
-  -- Fetch lesson type and validate (lesson_types uses active flag, not deleted_at)
+  -- Fetch lesson type and validate (lesson_types uses active flag, not deleted_at column)
   SELECT * INTO v_lesson FROM lesson_types
     WHERE id = p_lesson_type_id AND active;
 
