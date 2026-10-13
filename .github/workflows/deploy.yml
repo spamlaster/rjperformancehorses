@@ -89,15 +89,16 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
-      # -rlptz (not -a): keep the server's file owners/groups. The server's .env
-      # is never touched, and files Laravel writes in storage/ are never deleted.
+      # -rltz (not -a): keep the server's owners, groups and permissions, so
+      # storage/ and bootstrap/cache stay writable by the PHP pool. The server's
+      # .env is never touched, and files Laravel writes in storage/ are never deleted.
       - name: Upload
         run: |
-          rsync -rlptz --delete dist/ "$TARGET:/var/www/rjperformancehorses/dist/"
-          rsync -rlptz --delete --exclude .env --exclude tests --exclude node_modules --filter 'P /storage/**' \
+          rsync -rltz --delete dist/ "$TARGET:/var/www/rjperformancehorses/dist/"
+          rsync -rltz --delete --exclude .env --exclude tests --exclude node_modules --filter 'P /storage/**' \
             api/ "$TARGET:/var/www/rjperformancehorses/api/"
 
-      - name: Migrate and reload
+      - name: Migrate and cache
         run: |
           ssh "$TARGET" 'set -e
             cd /var/www/rjperformancehorses/api
@@ -105,5 +106,4 @@ jobs:
             [ -f .env ] || { echo "No .env yet - skipping migrate"; exit 0; }
             php artisan migrate --force
             php artisan config:cache
-            php artisan route:cache
-            sudo -n systemctl reload php8.3-fpm'
+            php artisan route:cache'
