@@ -61,6 +61,8 @@ return [
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
+            // Group-writable: written by both the deploy user and the rjph PHP pool.
+            'permission' => 0664,
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
         ],
