@@ -30,7 +30,7 @@ npm run db:reset # migrate:fresh --seed
 ### Deployment (needs a separate go-ahead)
 1. **Read-only audit first:** `free -m`, `php -v`, `nginx -T`, the existing FPM pools, `mysql --version`.
 2. **Database:** create an `rjph` database and user. Don't change global MySQL settings.
-3. **Server config:** install `deploy/php-fpm-rjph.conf` (RJ's own pool) and the `/api` block from `deploy/nginx-rjperformancehorses.conf` (merged into the existing site file). Run `nginx -t`, then reload. Add TLS with certbot.
+3. **Server config:** add the `/api` block from `deploy/nginx-rjperformancehorses.conf` (merged into the existing site file). Run `nginx -t`, then reload. Add TLS with certbot.
 4. **Laravel environment:** create `api/.env` with these values:
    ```
    APP_ENV=production
