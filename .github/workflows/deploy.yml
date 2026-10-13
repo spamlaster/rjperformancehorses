@@ -93,14 +93,14 @@ jobs:
       # live only on the server and are never overwritten or deleted.
       - name: Upload
         run: |
-          rsync -rlptz --delete dist/ "$TARGET:/var/www/rjph/web/"
+          rsync -rlptz --delete dist/ "$TARGET:/var/www/rjperformancehorses/dist/"
           rsync -rlptz --delete --exclude .env --exclude storage --exclude tests --exclude node_modules \
-            api/ "$TARGET:/var/www/rjph/api/"
+            api/ "$TARGET:/var/www/rjperformancehorses/api/"
 
       - name: Migrate and reload
         run: |
           ssh "$TARGET" 'set -e
-            cd /var/www/rjph/api
+            cd /var/www/rjperformancehorses/api
             php artisan migrate --force
             php artisan config:cache
             php artisan route:cache
