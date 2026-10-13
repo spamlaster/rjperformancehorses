@@ -73,9 +73,14 @@ export const useBookingStore = defineStore('booking', () => {
   }
 
   function areRidersValid(): boolean {
+    // Every required rider needs a name and DOB; Rider 1 may use the contact name ("I am the rider").
     const required = selectedLessonType.value?.requiredRiderCount || 1
-    const validRiders = riders.value.filter(r => r.firstName && r.lastName && r.dateOfBirth).length
-    return validRiders >= required
+    return riders.value.length === required && riders.value.every((r, i) => {
+      const usesContact = i === 0 && r.sameAsCustomer
+      const firstName = usesContact ? customerInfo.value.firstName : r.firstName
+      const lastName = usesContact ? customerInfo.value.lastName : r.lastName
+      return !!(firstName?.trim() && lastName?.trim() && r.dateOfBirth)
+    })
   }
 
   function getRiderCount(): number {
@@ -103,10 +108,10 @@ export const useBookingStore = defineStore('booking', () => {
   }
 
   function setLessonType(lesson: LessonType) {
-    if (selectedLessonType.value?.id !== lesson.id) {
+    const riderCount = lesson.requiredRiderCount || 1
+    if (selectedLessonType.value?.id !== lesson.id || riders.value.length !== riderCount) {
       selectedTime.value = ''
       // Reset riders to match new lesson requirements
-      const riderCount = lesson.requiredRiderCount || 1
       riders.value = Array(riderCount).fill(null).map(() => ({
         firstName: '',
         lastName: '',

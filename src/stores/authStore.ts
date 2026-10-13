@@ -1,10 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase } from '@/lib/supabase'
-import type { User } from '@supabase/supabase-js'
+import { api } from '@/lib/api'
+
+export interface AuthUser {
+  id: string
+  email: string
+  name: string | null
+}
 
 export interface AuthState {
-  user: User | null
+  user: AuthUser | null
   isAdmin: boolean
   adminProfile: {
     id: string
@@ -14,15 +19,21 @@ export interface AuthState {
   } | null
 }
 
+interface ProfileResponse {
+  user: AuthUser
+  is_admin: boolean
+  admin_profile: AuthState['adminProfile']
+}
+
 /**
- * Authentication Store - Phase 2B: Supabase Auth
+ * Authentication Store - Laravel Sanctum
  *
- * Real authentication using Supabase Auth + admin_profiles table
- * Session management via Supabase client
- * RLS enforces authorization at database level
+ * Admins sign in with a session cookie (Sanctum SPA authentication).
+ * The API enforces authorization on every admin route; this store only
+ * mirrors it for routing and display.
  */
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(null)
+  const user = ref<AuthUser | null>(null)
   const isAdmin = ref(false)
   const adminProfile = ref<AuthState['adminProfile']>(null)
   const isLoading = ref(false)
@@ -30,8 +41,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!user.value)
 
+  function setProfile(profile: ProfileResponse | null) {
+    user.value = profile?.user ?? null
+    isAdmin.value = profile?.is_admin ?? false
+    adminProfile.value = profile?.admin_profile ?? null
+  }
+
   /**
-   * Initialize auth state from Supabase session
+   * Restore auth state from the existing session cookie
    * Called on app startup
    */
   let initialization: Promise<void> | undefined
@@ -43,30 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function restoreAuth() {
     isLoading.value = true
     try {
-      // Get current session
-      const { data } = await supabase.auth.getSession()
-
-      if (data.session?.user) {
-        user.value = data.session.user
-        // Check if user is admin
-        await checkAdminStatus(data.session.user.id)
-      }
-
-      // Listen for auth changes
-      supabase.auth.onAuthStateChange((_event, session) => {
-        if (session?.user) {
-          user.value = session.user
-          // Run database requests after the auth callback releases its lock.
-          const id = session.user.id
-          setTimeout(() => {
-            if (user.value?.id === id) void checkAdminStatus(id)
-          }, 0)
-        } else {
-          user.value = null
-          isAdmin.value = false
-          adminProfile.value = null
-        }
-      })
+      await checkAdminStatus()
     } catch (err) {
       console.error('Failed to initialize auth:', err)
     } finally {
@@ -75,67 +69,32 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * Check if current user is an admin
-   * Query admin_profiles table
+   * Load the signed-in user and admin status (401 = signed out)
    */
-  async function checkAdminStatus(userId: string) {
-    try {
-      const { data, error: err } = await supabase
-        .from('admin_profiles')
-        .select('id, name, email, role')
-        .eq('auth_user_id', userId)
-        .eq('is_active', true)
-        .single()
-
-      if (err) {
-        // User is not an admin
-        isAdmin.value = false
-        adminProfile.value = null
-        return
-      }
-
-      isAdmin.value = true
-      adminProfile.value = data
-    } catch (err) {
-      console.error('Error checking admin status:', err)
-      isAdmin.value = false
-      adminProfile.value = null
-    }
+  async function checkAdminStatus() {
+    const { data } = await api<ProfileResponse>('GET', '/auth/me')
+    setProfile(data)
   }
 
   /**
-   * Login with email/password via Supabase Auth
+   * Login with email/password
    */
   async function login(email: string, password: string) {
     error.value = null
     isLoading.value = true
 
     try {
-      const { data, error: err } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      const { data, error: err } = await api<ProfileResponse>('POST', '/auth/login', { email, password })
 
-      if (err) {
-        error.value = err.message
+      if (err || !data) {
+        // Includes "Access denied…" for accounts that are not administrators.
+        error.value = err || 'Login failed'
+        setProfile(null)
         return false
       }
 
-      if (data.user) {
-        user.value = data.user
-        await checkAdminStatus(data.user.id)
-
-        if (!isAdmin.value) {
-          // User authenticated but not an admin
-          error.value = 'Access denied. This account is not authorized as an administrator.'
-          await logout()
-          return false
-        }
-
-        return true
-      }
-
-      return false
+      setProfile(data)
+      return isAdmin.value
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Login failed'
       return false
@@ -150,10 +109,8 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout() {
     isLoading.value = true
     try {
-      await supabase.auth.signOut()
-      user.value = null
-      isAdmin.value = false
-      adminProfile.value = null
+      await api('POST', '/auth/logout')
+      setProfile(null)
       error.value = null
     } catch (err) {
       console.error('Logout failed:', err)

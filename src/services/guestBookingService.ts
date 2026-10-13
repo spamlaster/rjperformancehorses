@@ -1,11 +1,11 @@
 /**
  * Guest Booking Service
  *
- * Handles creating real bookings through the controlled server-side RPC function.
- * This is the ONLY way guests can create bookings - direct database access is blocked by RLS.
+ * Handles creating real bookings through the Laravel API (POST /api/bookings/guest).
+ * This is the ONLY way guests can create bookings; all other writes require an admin session.
  */
 
-import { supabase } from '@/lib/supabase'
+import { api } from '@/lib/api'
 
 export interface GuestBookingPayload {
   lessonTypeId: string
@@ -33,7 +33,7 @@ export interface GuestBookingResult {
 }
 
 /**
- * Create a guest booking through the controlled RPC function
+ * Create a guest booking through the API
  *
  * This function:
  * 1. Rechecks availability (preventing double-booking race conditions)
@@ -47,45 +47,36 @@ export interface GuestBookingResult {
  */
 export async function createGuestBooking(payload: GuestBookingPayload): Promise<GuestBookingResult> {
   try {
-    // Build riders JSONB array
-    const ridersJsonb = payload.riders.map(r => ({
-      firstName: r.firstName,
-      lastName: r.lastName,
-      dateOfBirth: r.dateOfBirth || null,
-    }))
-
-    const { data, error } = await supabase.rpc('create_guest_booking', {
-      p_lesson_type_id: payload.lessonTypeId,
-      p_start_time: payload.startTime,
-      p_end_time: payload.endTime,
-      p_customer_first_name: payload.customer.firstName,
-      p_customer_last_name: payload.customer.lastName,
-      p_customer_email: payload.customer.email,
-      p_customer_phone: payload.customer.phone,
-      p_riders: ridersJsonb,
+    const { data, error } = await api<{ success: boolean; booking_id: string; customer_id: string; message: string }>('POST', '/bookings/guest', {
+      lesson_type_id: payload.lessonTypeId,
+      start_time: payload.startTime,
+      end_time: payload.endTime,
+      customer: {
+        first_name: payload.customer.firstName,
+        last_name: payload.customer.lastName,
+        email: payload.customer.email,
+        phone: payload.customer.phone,
+      },
+      riders: payload.riders.map(r => ({
+        first_name: r.firstName,
+        last_name: r.lastName,
+        date_of_birth: r.dateOfBirth || null,
+      })),
     })
 
-    if (error) {
-      console.error('Guest booking RPC error:', error)
+    if (error || !data) {
+      console.error('Guest booking error:', error)
       return {
         success: false,
-        error: error.message || 'Failed to create booking',
-      }
-    }
-
-    if (data?.error) {
-      console.error('Guest booking validation error:', data.error)
-      return {
-        success: false,
-        error: data.error,
+        error: error || 'Failed to create booking',
       }
     }
 
     return {
-      success: data?.success || false,
-      bookingId: data?.booking_id,
-      customerId: data?.customer_id,
-      message: data?.message,
+      success: data.success,
+      bookingId: data.booking_id,
+      customerId: data.customer_id,
+      message: data.message,
     }
   } catch (err) {
     console.error('Guest booking exception:', err)

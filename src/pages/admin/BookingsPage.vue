@@ -23,6 +23,7 @@
                 <th class="p-4 font-bold text-text-dark">Date & Time</th>
                 <th class="p-4 font-bold text-text-dark">Customer</th>
                 <th class="p-4 font-bold text-text-dark">Lesson</th>
+                <th class="p-4 font-bold text-text-dark">Riders</th>
                 <th class="p-4 font-bold text-text-dark">Horse</th>
                 <th class="p-4 font-bold text-text-dark">Status</th>
 
@@ -37,6 +38,7 @@
                 <td class="p-4">{{ formatDateTime(booking.startTime) }}</td>
                 <td class="p-4 text-sm">{{ getCustomerName(booking.customerId) }}</td>
                 <td class="p-4 text-sm">{{ getLessonName(booking.lessonTypeId) }}</td>
+                <td class="p-4 text-sm">{{ booking.riderNames?.length ? booking.riderNames.join(', ') : '—' }}</td>
                 <td class="p-4 text-sm">{{ getHorseName(booking.horseId) }}</td>
                 <td class="p-4">
                   <span class="badge" :class="statusClasses(booking.status)">

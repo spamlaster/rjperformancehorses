@@ -38,15 +38,15 @@
 
 ### Phase 2+: Backend Integration
 
-**Backend:** Node.js/Express + PostgreSQL or Supabase  
-**API:** REST or GraphQL  
-**Authentication:** JWT  
+**Backend:** Laravel 13 + MySQL (see MIGRATION_PLAN.md)  
+**API:** REST under /api on the same domain  
+**Authentication:** Laravel Sanctum (session cookies)  
 **External Services:** Email, Calendar OAuth, Payments
 
 ```
 ┌──────────────────────────┐       ┌──────────────────────────┐
-│   Frontend (Same as P1)   │◄────►│  Backend API (Node/Expr)  │
-│   Vue 3 SPA               │       │  PostgreSQL Database      │
+│   Frontend (Same as P1)   │◄────►│  Backend API (Laravel)    │
+│   Vue 3 SPA               │       │  MySQL Database           │
 │   Deployed to CDN/Pages   │       │  Deployed to Cloud        │
 └──────────────────────────┘       └──────────────────────────┘
                                             │

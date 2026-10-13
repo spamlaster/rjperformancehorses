@@ -1,154 +1,111 @@
 <template>
   <PublicLayout>
-    <!-- Hero Section with Background Image -->
-    <section class="relative h-96 md:h-[500px] bg-gray-900 overflow-hidden flex items-center justify-center">
-      <!-- Background image placeholder -->
-      <div class="absolute inset-0 bg-gradient-to-r from-black/40 to-black/20"></div>
-      <div class="absolute inset-0 bg-cover bg-center" style="background-image: linear-gradient(135deg, rgba(92, 64, 51, 0.4) 0%, rgba(0, 0, 0, 0.2) 100%);"></div>
-
-      <div class="relative z-10 container-narrow text-center text-white">
-        <h1 class="text-5xl md:text-6xl font-serif font-bold mb-2">
-          RJ
-        </h1>
-        <p class="text-2xl md:text-3xl font-serif tracking-widest mb-4">
-          PERFORMANCE HORSES
-        </p>
-        <p class="text-xl md:text-2xl italic font-serif mb-8 text-cream">
-          Confidence in the Saddle
-        </p>
-        <p class="text-lg md:text-xl mb-12 tracking-wide max-w-2xl mx-auto">
-          Riding Lessons • Barrel & Pole Training • Horsemanship
-        </p>
-        <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <router-link to="/book" class="btn-primary btn-large">
-            Book a Lesson
-          </router-link>
-          <router-link to="/lessons" class="bg-transparent border-2 border-white text-white hover:bg-white hover:text-text-dark font-medium py-3 px-8 rounded-md transition-all">
-            Learn More
-          </router-link>
+    <section class="home-hero">
+      <div class="hero-copy">
+        <h1>RJ</h1>
+        <p class="hero-brand">Performance Horses</p>
+        <p class="hero-script">Confidence in the Saddle</p>
+        <p class="hero-services">Riding Lessons <span>•</span> Barrel &amp; Pole Training <span>•</span> Horsemanship</p>
+        <div class="hero-actions">
+          <router-link to="/book" class="ranch-button">Book a Lesson</router-link>
+          <router-link to="/lessons" class="ranch-button ranch-button-outline">Learn More</router-link>
         </div>
       </div>
     </section>
 
-    <!-- About Rylie Section -->
-    <section class="py-16 md:py-24 bg-cream">
-      <div class="container-narrow">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-          <!-- Image -->
-          <div class="order-2 md:order-1">
-            <div class="bg-gradient-to-br from-accent-gold to-warm-gold rounded-lg h-96 md:h-full flex items-center justify-center text-white text-6xl shadow-lg">
-              📸
-            </div>
-          </div>
-
-          <!-- Content -->
-          <div class="order-1 md:order-2">
-            <h2 class="text-4xl md:text-5xl font-serif font-bold text-text-dark mb-6">
-              About Rylie
-            </h2>
-            <p class="text-lg text-light-brown mb-4 leading-relaxed">
-              Hi, I'm Rylie! I'm passionate about helping riders of all levels build confidence, learn solid horsemanship, and have fun in the process.
-            </p>
-            <p class="text-lg text-light-brown mb-6 leading-relaxed">
-              Whether you're just getting started or looking to improve your barrel and pole skills, my goal is to create a positive, supportive, and encouraging environment for every rider.
-            </p>
-            <router-link to="/about" class="btn-primary">
-              Meet Rylie
-            </router-link>
-          </div>
-        </div>
+    <section class="home-about">
+      <img src="/images/Golden Hour Horse Bond.png" alt="Rylie sharing a moment with her chestnut horse" />
+      <div class="about-copy">
+        <h2>About Rylie</h2>
+        <p>Hi, I'm Rylie! I'm passionate about helping riders of all levels build confidence, learn solid horsemanship, and have fun in the process. Whether you're just getting started or looking to improve your barrel and pole skills, my goal is to create a positive, supportive, and encouraging environment for every rider.</p>
+        <router-link to="/about" class="ranch-button">Meet Rylie</router-link>
       </div>
     </section>
 
-    <!-- Lessons & Training Section -->
-    <section class="py-16 md:py-24 bg-white border-b border-border-light">
-      <div class="container-narrow">
-        <h2 class="text-4xl md:text-5xl font-serif font-bold text-text-dark text-center mb-4">
-          Lessons & Training
-        </h2>
-        <p class="text-center text-light-brown text-lg mb-16">
-          Choose your lesson type and start your journey
-        </p>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <!-- Private Riding Lessons -->
-          <div class="card overflow-hidden hover:shadow-xl transition-shadow">
-            <div class="h-48 bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center">
-              <div class="text-6xl">🏇</div>
-            </div>
-            <div class="card-padding">
-              <h3 class="font-serif text-2xl font-bold text-text-dark mb-3">
-                Private Riding Lessons
-              </h3>
-              <p class="text-light-brown mb-6 leading-relaxed">
-                One-on-one instruction tailored to your goals and experience level.
-              </p>
-              <router-link to="/lessons" class="inline-flex items-center text-accent-gold font-bold hover:text-warm-gold transition-colors">
-                View Options
-                <span class="ml-2">→</span>
-              </router-link>
-            </div>
-          </div>
-
-          <!-- Joined/Sibling Lessons -->
-          <div class="card overflow-hidden hover:shadow-xl transition-shadow">
-            <div class="h-48 bg-gradient-to-br from-green-600 to-green-800 flex items-center justify-center">
-              <div class="text-6xl">👥</div>
-            </div>
-            <div class="card-padding">
-              <h3 class="font-serif text-2xl font-bold text-text-dark mb-3">
-                Joined / Sibling Lessons
-              </h3>
-              <p class="text-light-brown mb-6 leading-relaxed">
-                Perfect for siblings or friends looking to ride together.
-              </p>
-              <router-link to="/lessons" class="inline-flex items-center text-accent-gold font-bold hover:text-warm-gold transition-colors">
-                View Options
-                <span class="ml-2">→</span>
-              </router-link>
-            </div>
-          </div>
-
-          <!-- Barrel & Pole -->
-          <div class="card overflow-hidden hover:shadow-xl transition-shadow">
-            <div class="h-48 bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center">
-              <div class="text-6xl">🔥</div>
-            </div>
-            <div class="card-padding">
-              <h3 class="font-serif text-2xl font-bold text-text-dark mb-3">
-                Barrel & Pole Lessons
-              </h3>
-              <p class="text-light-brown mb-6 leading-relaxed">
-                For more experienced riders looking to improve their skills.
-              </p>
-              <router-link to="/lessons" class="inline-flex items-center text-accent-gold font-bold hover:text-warm-gold transition-colors">
-                View Options
-                <span class="ml-2">→</span>
-              </router-link>
-            </div>
-          </div>
-        </div>
+    <section class="home-lessons">
+      <h2><span>Lessons &amp; Training</span></h2>
+      <div class="lesson-grid">
+        <article v-for="lesson in lessons" :key="lesson.title" class="home-lesson">
+          <img :src="lesson.image" :alt="lesson.alt" />
+          <h3>{{ lesson.title }}</h3>
+          <p>{{ lesson.description }}</p>
+          <router-link to="/lessons" class="ranch-button lesson-button">View Options</router-link>
+        </article>
       </div>
     </section>
 
-    <!-- CTA Section -->
-    <section class="relative py-16 md:py-24 bg-gradient-to-r from-dark-brown to-text-dark text-white overflow-hidden">
-      <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text x=%2250%22 y=%2250%22 font-size=%2280%22>🐴</text></svg>'); background-size: 200px;"></div>
-      <div class="relative z-10 container-narrow text-center">
-        <h2 class="text-4xl md:text-5xl font-serif font-bold mb-4">
-          Ready to Ride?
-        </h2>
-        <p class="text-xl mb-12 text-gray-100 max-w-2xl mx-auto">
-          Check out my current availability and book your lesson online.
-        </p>
-        <router-link to="/book" class="btn-primary inline-block btn-large bg-accent-gold hover:bg-warm-gold text-text-dark">
-          Book a Lesson
-        </router-link>
-      </div>
+    <section class="home-ready">
+      <h2>Ready to Ride?</h2>
+      <p>Check out my current availability and book your lesson online.</p>
+      <router-link to="/book" class="ranch-button">Book a Lesson</router-link>
     </section>
   </PublicLayout>
 </template>
 
 <script setup lang="ts">
 import PublicLayout from '@/components/layouts/PublicLayout.vue'
+const lessons = [
+  { title: 'Private Riding Lessons', image: '/images/Sunset Cowgirl in the Arena.png', alt: 'Cowgirl riding a chestnut horse in the arena', description: 'One-on-one instruction tailored to your goals and experience level.' },
+  { title: 'Joined / Sibling Lessons', image: '/images/Golden Hour Riders in the Arena.png', alt: 'Two riders learning together in the arena', description: 'Perfect for siblings or friends who want to ride together.' },
+  { title: 'Barrel & Pole Lessons', image: '/images/Barrel Racing at Full Speed.png', alt: 'Rider rounding a blue barrel', description: 'For more experienced riders looking to improve their skills.' },
+]
 </script>
+
+<style scoped>
+.home-hero { position: relative; width: 100%; height: 35.57vw; min-height: 340px; display: flex; align-items: center; background: url('/images/Sunset Cowgirl Over the Mountain Arena.png') center center / cover no-repeat; color: white; }
+.home-hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(0 0 0 / 28%), rgb(0 0 0 / 14%) 55%, transparent 75%); }
+.hero-copy { position: relative; width: 65%; text-align: center; padding: 20px 3%; text-shadow: 0 2px 5px #0008; }
+.hero-copy h1 { font-size: clamp(52px, 6.8vw, 88px); font-weight: 400; margin: 0; line-height: 1; }
+.hero-brand { text-transform: uppercase; letter-spacing: .16em; font-size: clamp(18px, 2.6vw, 34px); margin: 12px 0 8px; }
+.hero-script { font-family: var(--font-script); font-size: clamp(32px, 4.5vw, 58px); line-height: 1.15; margin: 0 0 14px; }
+.hero-services { font-size: clamp(10px, 1.3vw, 17px); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 28px; }
+.hero-services span { padding: 0 8px; }
+.hero-actions { display: flex; justify-content: center; gap: 18px; }
+.ranch-button { display: inline-block; border: 1px solid #694226; border-radius: 999px; background: linear-gradient(110deg, #89603b, #754c2e); color: #fff; padding: 10px 36px; font-size: 16px; line-height: 1.25; text-shadow: none; transition: background .2s; }
+.ranch-button:hover { background: #603b25; color: #fff; }
+.ranch-button-outline { border-color: white; background: transparent; min-width: 190px; }
+.home-about { position: relative; margin-top: 16px; min-height: 365px; overflow: hidden; background: #fff; display: flex; align-items: center; }
+.home-about img { position: absolute; right: 0; top: 0; width: 55%; height: 100%; object-fit: cover; object-position: center; }
+.home-about::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #fff 42%, rgb(255 255 255 / 96%) 47%, rgb(255 255 255 / 65%) 53%, rgb(255 255 255 / 18%) 60%, transparent 68%); }
+.about-copy { position: relative; z-index: 1; width: 49%; padding: 28px 0 26px 7.5%; }
+.about-copy h2 { font-family: 'Allura', var(--font-script); font-size: clamp(46px, 5vw, 68px); color: #482b1c; font-weight: 400; margin: 0 0 12px; }
+.about-copy p { font-family: 'Times New Roman', Georgia, serif; font-weight: 400; color: #342c26; font-size: clamp(16px, 1.7vw, 21px); line-height: 1.28; margin-bottom: 20px; }
+.about-copy .ranch-button { padding: 8px 34px; }
+.home-lessons { padding: 26px 3.5% 25px; background: #fcf9f3; }
+.home-lessons > h2 { display: flex; align-items: center; gap: 15px; justify-content: center; text-transform: uppercase; letter-spacing: .15em; font-size: clamp(20px, 2.4vw, 30px); font-weight: 400; margin: 0 10% 22px; white-space: nowrap; }
+.home-lessons > h2::before, .home-lessons > h2::after { content: ''; height: 1px; background: #b68a67; flex: 1; }
+.lesson-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.home-lesson { text-align: center; }
+.home-lesson img { width: 100%; aspect-ratio: 1.35; object-fit: cover; border-radius: 4px; }
+.home-lesson h3 { font-size: clamp(18px, 2vw, 25px); font-weight: 400; margin: 9px 0 12px; position: relative; }
+.home-lesson h3::after { content: ''; position: absolute; bottom: -6px; left: 44%; width: 12%; height: 1px; background: #b68a67; }
+.home-lesson p { font-size: clamp(15px, 1.5vw, 19px); line-height: 1.3; max-width: 270px; margin: 0 auto 14px; }
+.lesson-button { background: transparent; color: #482b1c; padding: 6px 36px; }
+.home-ready { padding: 60px 24px 44px; text-align: center; color: white; background: linear-gradient(#0006, #0006), url('/images/Golden Fence at Mountain Sunset.png') center 52% / cover; }
+.home-ready h2 { text-transform: uppercase; letter-spacing: .15em; font-weight: 400; font-size: 30px; margin-bottom: 12px; }
+.home-ready p { font-size: 19px; margin-bottom: 22px; }
+.home-ready .ranch-button { padding: 14px 55px; }
+@media (max-width: 767px) {
+  .home-hero { aspect-ratio: auto; height: 430px; align-items: flex-end; background-size: auto 100%; background-position: 72% top; }
+  .home-hero::before { background: linear-gradient(transparent 30%, #0005 55%, #000e); }
+  .hero-copy { width: 100%; padding: 0 24px 18px; text-align: left; }
+  .hero-copy h1, .hero-brand { display: none; }
+  .hero-script { font-size: 47px; max-width: 270px; line-height: 1.03; margin-bottom: 14px; }
+  .hero-services { font-size: 11px; line-height: 1.5; letter-spacing: .12em; margin-bottom: 15px; }
+  .hero-services span { padding: 0 4px; }
+  .hero-actions .ranch-button { width: 100%; text-align: center; }
+  .hero-actions .ranch-button-outline { display: none; }
+  .home-about { min-height: 340px; margin-top: 0; }
+  .about-copy { width: 65%; padding: 24px 16px; }
+  .about-copy h2 { font-size: 40px; }
+  .about-copy p { font-family: 'Times New Roman', Georgia, serif; font-weight: 400; color: #342c26; font-size: 15px; }
+  .home-about img { width: 55%; object-position: 60%; }
+  .home-about::after { background: linear-gradient(90deg, #fff 45%, rgb(255 255 255 / 87%) 57%, transparent 85%); }
+  .home-lessons { padding: 28px 20px; }
+  .home-lessons > h2 { margin: 0 0 20px; font-size: 20px; gap: 8px; }
+  .lesson-grid { grid-template-columns: 1fr; gap: 30px; }
+  .home-lesson h3 { font-size: 23px; }
+  .home-lesson p { font-size: 17px; }
+  .home-ready { padding: 42px 20px; }
+}
+</style>

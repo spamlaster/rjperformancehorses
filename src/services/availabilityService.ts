@@ -8,11 +8,11 @@
  * - Existing bookings (pending/confirmed only)
  * - Lesson type eligibility
  *
- * This service calls server-side RPC functions that enforce all scheduling rules.
+ * This service calls the Laravel API, which enforces all scheduling rules.
  * The availability calculation is authoritative on the server.
  */
 
-import { supabase } from '@/lib/supabase'
+import { api } from '@/lib/api'
 
 export interface BookableSlot {
   startTime: string  // HH:MM
@@ -23,7 +23,7 @@ export interface BookableSlot {
 /**
  * Get available booking slots for a lesson type on a specific date
  *
- * @param lessonTypeId - UUID of the lesson type
+ * @param lessonTypeId - ID of the lesson type
  * @param date - Date in YYYY-MM-DD format
  * @returns Array of available time slots
  *
@@ -47,12 +47,10 @@ export async function getBookableSlots(
     return []
   }
 
-  const { data, error } = await supabase.rpc('get_bookable_slots', {
-    p_lesson_type_id: lessonTypeId,
-    p_date: date,
-  })
-  if (error) throw error
-  return (data || []).map((slot: { start_time: string; end_time: string; available: boolean }) => ({
+  const query = new URLSearchParams({ lesson_type_id: lessonTypeId, date })
+  const { data, error } = await api<Array<{ start_time: string; end_time: string; available: boolean }>>('GET', `/availability/slots?${query}`)
+  if (error) throw new Error(error)
+  return (data || []).map(slot => ({
     startTime: slot.start_time,
     endTime: slot.end_time,
     available: slot.available,

@@ -1,16 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Customer, Rider, Horse, Booking, LessonType, InstructorAvailability, HorseRecurringAvailability, BlockedTime } from '@/types/models'
-import * as supabaseService from '@/services/supabaseService'
+import * as apiService from '@/services/apiService'
 
 /**
  * Admin Store - Phase 2C
  *
- * Manages admin application state with real Supabase persistence.
- * All CRUD operations persist to PostgreSQL via Supabase service layer.
+ * Manages admin application state with real persistence.
+ * All CRUD operations persist to MySQL via the Laravel API service layer.
  */
 export const useAdminStore = defineStore('admin', () => {
-  // Data from Supabase
+  // Data from the API
   const customers = ref<Customer[]>([])
   const riders = ref<Rider[]>([])
   const horses = ref<Horse[]>([])
@@ -26,7 +26,7 @@ export const useAdminStore = defineStore('admin', () => {
 
   const hasError = computed(() => !!error.value)
 
-  // Initialize: Load all data from Supabase
+  // Initialize: Load all data from the API
   async function loadAllData() {
     isLoading.value = true
     error.value = null
@@ -42,14 +42,14 @@ export const useAdminStore = defineStore('admin', () => {
         horseAvailData,
         blockedTimesData,
       ] = await Promise.all([
-        supabaseService.fetchCustomers(),
-        supabaseService.fetchRiders(),
-        supabaseService.fetchHorses(true),
-        supabaseService.fetchLessonTypes(false),
-        supabaseService.fetchBookings(),
-        supabaseService.fetchInstructorAvailability(),
-        supabaseService.fetchHorseRecurringAvailability(),
-        supabaseService.fetchBlockedTimes(),
+        apiService.fetchCustomers(),
+        apiService.fetchRiders(),
+        apiService.fetchHorses(true),
+        apiService.fetchLessonTypes(false),
+        apiService.fetchBookings(),
+        apiService.fetchInstructorAvailability(),
+        apiService.fetchHorseRecurringAvailability(),
+        apiService.fetchBlockedTimes(),
       ])
 
       customers.value = customersData
@@ -61,7 +61,7 @@ export const useAdminStore = defineStore('admin', () => {
       horseRecurringAvailability.value = horseAvailData
       blockedTimes.value = blockedTimesData
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to load data from Supabase'
+      error.value = err instanceof Error ? err.message : 'Failed to load data from the server'
       console.error('Error loading admin data:', err)
     } finally {
       isLoading.value = false
@@ -72,7 +72,7 @@ export const useAdminStore = defineStore('admin', () => {
   // Customers
   // ============================================================
   async function addCustomer(customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>) {
-    const newCustomer = await supabaseService.createCustomer(customer)
+    const newCustomer = await apiService.createCustomer(customer)
     if (newCustomer) {
       customers.value.push(newCustomer)
       return newCustomer
@@ -82,7 +82,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function updateCustomerLocal(id: string, updates: Partial<Customer>) {
-    const success = await supabaseService.updateCustomer(id, updates)
+    const success = await apiService.updateCustomer(id, updates)
     if (success) {
       const index = customers.value.findIndex(c => c.id === id)
       if (index !== -1) {
@@ -106,7 +106,7 @@ export const useAdminStore = defineStore('admin', () => {
   // Riders
   // ============================================================
   async function addRider(rider: Omit<Rider, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>) {
-    const newRider = await supabaseService.createRider(rider)
+    const newRider = await apiService.createRider(rider)
     if (newRider) {
       riders.value.push(newRider)
       return newRider
@@ -116,7 +116,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function updateRiderLocal(id: string, updates: Partial<Rider>) {
-    const success = await supabaseService.updateRider(id, updates)
+    const success = await apiService.updateRider(id, updates)
     if (success) {
       const index = riders.value.findIndex(r => r.id === id)
       if (index !== -1) {
@@ -137,7 +137,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function deleteRider(id: string) {
-    const success = await supabaseService.deleteRider(id)
+    const success = await apiService.deleteRider(id)
     if (success) {
       const index = riders.value.findIndex(r => r.id === id)
       if (index !== -1) {
@@ -153,7 +153,7 @@ export const useAdminStore = defineStore('admin', () => {
   // Horses
   // ============================================================
   async function addHorse(horse: Omit<Horse, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>) {
-    const newHorse = await supabaseService.createHorse(horse)
+    const newHorse = await apiService.createHorse(horse)
     if (newHorse) {
       horses.value.push(newHorse)
       return newHorse
@@ -163,7 +163,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function updateHorseLocal(id: string, updates: Partial<Horse>) {
-    const success = await supabaseService.updateHorse(id, updates)
+    const success = await apiService.updateHorse(id, updates)
     if (success) {
       const index = horses.value.findIndex(h => h.id === id)
       if (index !== -1) {
@@ -184,7 +184,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function deleteHorse(id: string) {
-    const success = await supabaseService.deleteHorse(id)
+    const success = await apiService.deleteHorse(id)
     if (success) {
       const index = horses.value.findIndex(h => h.id === id)
       if (index !== -1) {
@@ -222,7 +222,7 @@ export const useAdminStore = defineStore('admin', () => {
   // Availability
   // ============================================================
   async function updateInstructorAvailabilityLocal(id: string, updates: Partial<InstructorAvailability>) {
-    const success = await supabaseService.updateInstructorAvailability(id, updates)
+    const success = await apiService.updateInstructorAvailability(id, updates)
     if (success) {
       const index = instructorAvailability.value.findIndex(a => a.id === id)
       if (index !== -1) {
@@ -239,7 +239,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function addInstructorAvailability(availability: Omit<InstructorAvailability, 'id' | 'createdAt' | 'updatedAt'>) {
-    const newAvailability = await supabaseService.createInstructorAvailability(availability)
+    const newAvailability = await apiService.createInstructorAvailability(availability)
     if (newAvailability) {
       instructorAvailability.value.push(newAvailability)
       return newAvailability
@@ -249,7 +249,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function removeInstructorAvailability(id: string) {
-    const success = await supabaseService.deleteInstructorAvailability(id)
+    const success = await apiService.deleteInstructorAvailability(id)
     if (success) {
       const index = instructorAvailability.value.findIndex(a => a.id === id)
       if (index !== -1) {
@@ -262,7 +262,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function updateHorseAvailabilityLocal(id: string, updates: Partial<HorseRecurringAvailability>) {
-    const success = await supabaseService.updateHorseRecurringAvailability(id, updates)
+    const success = await apiService.updateHorseRecurringAvailability(id, updates)
     if (success) {
       const index = horseRecurringAvailability.value.findIndex(a => a.id === id)
       if (index !== -1) {
@@ -279,7 +279,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function addHorseRecurringAvailability(availability: Omit<HorseRecurringAvailability, 'id' | 'createdAt' | 'updatedAt'>) {
-    const newAvailability = await supabaseService.createHorseRecurringAvailability(availability)
+    const newAvailability = await apiService.createHorseRecurringAvailability(availability)
     if (newAvailability) {
       horseRecurringAvailability.value.push(newAvailability)
       return newAvailability
@@ -289,7 +289,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function removeHorseRecurringAvailability(id: string) {
-    const success = await supabaseService.deleteHorseRecurringAvailability(id)
+    const success = await apiService.deleteHorseRecurringAvailability(id)
     if (success) {
       const index = horseRecurringAvailability.value.findIndex(a => a.id === id)
       if (index !== -1) {
@@ -302,7 +302,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function addBlockedTime(blockedTime: Omit<BlockedTime, 'id' | 'createdAt' | 'updatedAt'>) {
-    const newBlockedTime = await supabaseService.createBlockedTime(blockedTime)
+    const newBlockedTime = await apiService.createBlockedTime(blockedTime)
     if (newBlockedTime) {
       blockedTimes.value.push(newBlockedTime)
       return newBlockedTime
@@ -312,7 +312,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function deleteBlockedTime(id: string) {
-    const success = await supabaseService.deleteBlockedTime(id)
+    const success = await apiService.deleteBlockedTime(id)
     if (success) {
       const index = blockedTimes.value.findIndex(b => b.id === id)
       if (index !== -1) {

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Allura&family=Great+Vibes:wght@400&display=swap');
+
 :root {
   /* Colors */
   --color-cream: #F5F1ED;
@@ -27,6 +29,7 @@
   --font-sans: 'Segoe UI', 'Roboto', sans-serif;
   --font-heading: var(--font-serif);
   --font-body: var(--font-sans);
+  --font-script: 'Great Vibes', cursive;
 
   /* Spacing */
   --spacing-xs: 0.25rem;

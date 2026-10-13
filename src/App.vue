@@ -21,7 +21,7 @@ import ConfirmDialog from '@/components/dialogs/ConfirmDialog.vue'
 const authStore = useAuthStore()
 const authReady = ref(false)
 
-// Initialize Supabase session on app startup
+// Restore the admin session on app startup
 onMounted(async () => {
   try {
     await authStore.initializeAuth()

@@ -2,7 +2,7 @@
 
 export interface Customer {
   id: string;
-  authUserId?: string; // Will reference Supabase auth.users.id in Phase 2
+  authUserId?: string; // users.id of a linked login (Phase 2 accounts)
   firstName: string;
   lastName: string;
   email: string;
@@ -107,6 +107,7 @@ export interface Booking {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
+  riderNames?: string[]; // From booking_riders (admin reads only)
 }
 
 export interface BookingHorse {
@@ -152,5 +153,5 @@ export interface BookingWizardState {
   waiverSigned: boolean;
 }
 
-// Note: Admin authentication will be handled by Supabase Auth in Phase 2
+// Note: Admin authentication types live in stores/authStore.ts
 // Do not create authentication-related types here

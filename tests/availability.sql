@@ -55,7 +55,7 @@ UPDATE horses SET active=false WHERE id='test-h3'; INSERT INTO blocked_times(id,
 SELECT pg_temp.check_result('21 two with one blocked', NOT EXISTS(SELECT 1 FROM public.get_bookable_slots('test-lesson','2099-01-05') WHERE start_time='09:00'));
 UPDATE horses SET active=true WHERE id='test-h3';
 SELECT pg_temp.check_result('22 three with one blocked', EXISTS(SELECT 1 FROM public.get_bookable_slots('test-lesson','2099-01-05') WHERE start_time='09:00'));
-DELETE FROM blocked_times WHERE id='test-hblock'; INSERT INTO bookings(id,customer_id,lesson_type_id,horse_id,start_time,end_time,status) VALUES ('test-booking','test-customer','test-lesson','test-h1','2099-01-05 09:00','2099-01-05 10:00','confirmed');
+DELETE FROM blocked_times WHERE id='test-hblock'; INSERT INTO bookings(id,customer_id,lesson_type_id,horse_id,start_time,end_time,status) VALUES ('test-booking','test-customer','test-lesson','test-h1','2099-01-05 09:00','2099-01-05 10:00','confirmed'); INSERT INTO booking_horses(id,booking_id,horse_id) VALUES ('test-bh','test-booking','test-h1');
 SELECT pg_temp.check_result('23 multi horse booking also occupies instructor', NOT EXISTS(SELECT 1 FROM public.get_bookable_slots('test-lesson','2099-01-05') WHERE start_time='09:00'));
 UPDATE bookings SET status='pending' WHERE id='test-booking';
 SELECT pg_temp.check_result('24 pending blocks', NOT EXISTS(SELECT 1 FROM public.get_bookable_slots('test-lesson','2099-01-05') WHERE start_time='09:00'));
@@ -76,6 +76,50 @@ SELECT pg_temp.check_result('32 duration respected', (SELECT end_time FROM publi
 UPDATE horses SET active=false WHERE id IN ('test-h2','test-h3'); UPDATE lesson_types SET duration_minutes=60,required_horse_count=1 WHERE id='test-lesson';
 SELECT pg_temp.check_result('33 changing horse count changes result', (SELECT count(*) FROM public.get_bookable_slots('test-lesson','2099-01-05'))=5);
 SELECT pg_temp.check_result('34 past date', (SELECT count(*) FROM public.get_bookable_slots('test-lesson','2000-01-01'))=0);
+-- booking_horses is authoritative for horse conflicts; create_guest_booking must agree with get_bookable_slots.
+CREATE FUNCTION pg_temp.book(t timestamp, email text) RETURNS jsonb LANGUAGE sql AS $$
+  SELECT public.create_guest_booking('test-lesson', t, t + make_interval(mins => (SELECT duration_minutes FROM public.lesson_types WHERE id='test-lesson')),
+    'Test','Guest',email,NULL,'[{"firstName":"Test","lastName":"Rider","dateOfBirth":"2010-01-01"}]') $$;
+-- Every candidate start: offered by get_bookable_slots <=> create_guest_booking succeeds (attempts rolled back).
+CREATE FUNCTION pg_temp.rpcs_agree() RETURNS boolean LANGUAGE plpgsql AS $$
+DECLARE t timestamp; offered boolean; booked boolean; BEGIN
+  FOR t IN SELECT generate_series(timestamp '2099-01-05 09:00', timestamp '2099-01-05 11:30', interval '30 minutes') LOOP
+    offered := EXISTS(SELECT 1 FROM public.get_bookable_slots('test-lesson','2099-01-05') WHERE start_time=to_char(t,'HH24:MI'));
+    BEGIN
+      booked := (pg_temp.book(t,'agree@example.com')->>'success') IS NOT NULL;
+      RAISE EXCEPTION 'rollback attempt';
+    EXCEPTION WHEN raise_exception THEN NULL; END;
+    IF offered IS DISTINCT FROM booked THEN RAISE NOTICE 'disagree at %: offered=% booked=%', t, offered, booked; RETURN false; END IF;
+  END LOOP;
+  RETURN true;
+END $$;
+UPDATE horse_recurring_availability SET active=false WHERE id='test-a-test-h1';
+SELECT pg_temp.check_result('58 inactive horse window not counted', (SELECT count(*) FROM public.get_bookable_slots('test-lesson','2099-01-05'))=0);
+SELECT pg_temp.check_result('59 RPCs agree with no horse', pg_temp.rpcs_agree());
+UPDATE horse_recurring_availability SET active=true WHERE id='test-a-test-h1'; UPDATE horses SET active=true WHERE id IN ('test-h2','test-h3');
+SELECT pg_temp.check_result('60 one-horse booking created', (pg_temp.book('2099-01-05 09:00','one@example.com')->>'success')='true');
+SELECT pg_temp.check_result('61 one-horse booking reserves its horse via booking_horses', (SELECT array_agg(bh.horse_id) FROM booking_horses bh JOIN bookings b ON b.id=bh.booking_id WHERE b.start_time='2099-01-05 09:00')=ARRAY['test-h1']);
+SELECT pg_temp.check_result('62 booked horse removed from availability', (SELECT array_agg(id) FROM public.available_horse_ids('test-lesson','2099-01-05 09:30','2099-01-05 10:30') id)=ARRAY['test-h2','test-h3']);
+SELECT pg_temp.check_result('63 booked time no longer offered or bookable', NOT EXISTS(SELECT 1 FROM public.get_bookable_slots('test-lesson','2099-01-05') WHERE start_time='09:00')
+  AND pg_temp.book('2099-01-05 09:00','dup@example.com')->>'error'='The requested time is no longer available');
+UPDATE bookings SET status='cancelled' WHERE start_time='2099-01-05 09:00';
+SELECT pg_temp.check_result('64 cancelled booking releases horse', (SELECT count(*) FROM public.available_horse_ids('test-lesson','2099-01-05 09:00','2099-01-05 10:00'))=3);
+UPDATE bookings SET status='completed' WHERE start_time='2099-01-05 09:00';
+SELECT pg_temp.check_result('65 completed booking does not hold horse', (SELECT count(*) FROM public.available_horse_ids('test-lesson','2099-01-05 09:00','2099-01-05 10:00'))=3);
+UPDATE lesson_types SET required_horse_count=2 WHERE id='test-lesson';
+SELECT pg_temp.check_result('66 two-horse booking created', (pg_temp.book('2099-01-05 10:00','two@example.com')->>'success')='true');
+SELECT pg_temp.check_result('67 two-horse booking reserves two distinct horses', (SELECT count(DISTINCT bh.horse_id) FROM booking_horses bh JOIN bookings b ON b.id=bh.booking_id WHERE b.start_time='2099-01-05 10:00' AND b.status='pending')=2);
+SELECT pg_temp.check_result('68 both booked horses excluded from overlapping availability', (SELECT array_agg(id) FROM public.available_horse_ids('test-lesson','2099-01-05 10:30','2099-01-05 11:30') id)=ARRAY['test-h3']);
+SELECT pg_temp.check_result('69 RPCs agree after two-horse booking', pg_temp.rpcs_agree());
+-- Horse count is the deciding factor at 11:00 (one of the two free horses blocked).
+INSERT INTO blocked_times(id,horse_id,date,start_time,end_time) VALUES ('test-hblock2','test-h3','2099-01-05','11:00','12:00');
+SELECT pg_temp.check_result('70 RPCs agree when horse count decides', pg_temp.rpcs_agree());
+DELETE FROM blocked_times WHERE id='test-hblock2';
+-- Legacy bookings.horse_id alone no longer reserves a horse (booking_horses is authoritative); instructor still blocked.
+INSERT INTO bookings(id,customer_id,lesson_type_id,horse_id,start_time,end_time,status) VALUES ('test-legacy','test-customer','test-lesson','test-h3','2099-01-05 11:00','2099-01-05 12:00','confirmed');
+SELECT pg_temp.check_result('71 bookings.horse_id without booking_horses ignored for horses', EXISTS(SELECT 1 FROM public.available_horse_ids('test-lesson','2099-01-05 11:00','2099-01-05 12:00') id WHERE id='test-h3')
+  AND NOT EXISTS(SELECT 1 FROM public.get_bookable_slots('test-lesson','2099-01-05') WHERE start_time='11:00'));
+DELETE FROM bookings WHERE id='test-legacy' OR start_time IN ('2099-01-05 09:00','2099-01-05 10:00'); UPDATE lesson_types SET required_horse_count=1 WHERE id='test-lesson'; UPDATE horses SET active=false WHERE id IN ('test-h2','test-h3');
 INSERT INTO instructor_availability(id,day_of_week,start_time,end_time) VALUES ('test-time',extract(dow from (now() at time zone 'Pacific/Kiritimati')::date),'00:00','01:00') ON CONFLICT(day_of_week,start_time) DO UPDATE SET active=true; INSERT INTO horse_recurring_availability(id,horse_id,day_of_week,start_time,end_time) VALUES ('test-time-h','test-h1',extract(dow from (now() at time zone 'Pacific/Kiritimati')::date),'00:00','01:00'); UPDATE business_config SET config_value='Pacific/Kiritimati';
 SELECT pg_temp.check_result('35 business timezone rejects elapsed local midnight', NOT EXISTS(SELECT 1 FROM public.get_bookable_slots('test-lesson',(now() AT TIME ZONE 'Pacific/Kiritimati')::date) WHERE start_time='00:00'));
 UPDATE business_config SET config_value='America/Denver';
@@ -87,6 +131,7 @@ SELECT pg_temp.check_result('38 anon executes RPC', (SELECT count(*) FROM public
 SELECT pg_temp.check_result('39 anon cannot read instructor_availability', (SELECT count(*) FROM public.instructor_availability)=0);
 SELECT pg_temp.check_result('40 anon cannot read horse_recurring_availability', (SELECT count(*) FROM public.horse_recurring_availability)=0);
 SELECT pg_temp.check_result('41 anon cannot read blocked_times', (SELECT count(*) FROM public.blocked_times)=0);
+SELECT pg_temp.check_result('72 anon cannot call internal horse helper', NOT has_function_privilege('anon','public.available_horse_ids(text,timestamp,timestamp)','EXECUTE'));
 SELECT pg_temp.check_result('42 anon cannot read bookings', (SELECT count(*) FROM public.bookings)=0);
 SELECT pg_temp.check_result('43 anon cannot read customers', (SELECT count(*) FROM public.customers)=0);
 SELECT pg_temp.check_result('44 anon cannot read riders', (SELECT count(*) FROM public.riders)=0);

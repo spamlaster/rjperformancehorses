@@ -101,18 +101,19 @@ npm run build
 # Deploy dist/ to GitHub Pages, Vercel, Netlify, or S3+CloudFront
 ```
 
-### Backend (Phase 2)
+### Backend
 ```
-PostgreSQL Database
+MySQL
     ↕
-Node.js/Express API
+Laravel API (api/, served at /api)
     ↕
 Frontend SPA (this repo)
 ```
 
-- **Database:** PostgreSQL or Supabase
-- **Server:** Node.js, Express.js
-- **Authentication:** JWT tokens
+- **Database:** MySQL 8
+- **Server:** Laravel 13 on Nginx + PHP-FPM (IONOS VPS)
+- **Authentication:** Laravel Sanctum (session cookies)
+- See [MIGRATION_PLAN.md](./MIGRATION_PLAN.md)
 - **External Services:** SendGrid (email), Stripe (payments), Google OAuth (calendar)
 
 ## Documentation
@@ -171,8 +172,8 @@ Frontend SPA (this repo)
 
 ## What's Next? Phase 2 Recommendations
 
-1. **Backend API** - Build Node.js/Express API with PostgreSQL
-   - User authentication with JWT
+1. **Backend API** - Laravel API with MySQL (see MIGRATION_PLAN.md)
+   - Admin authentication with Sanctum
    - CRUD endpoints for all resources
    - Availability calculation logic
    - Booking confirmation workflow

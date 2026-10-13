@@ -3,6 +3,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Font utilities */
+.font-script {
+  font-family: var(--font-script);
+  font-weight: 400;
+}
+
 /* Utility classes */
 .container-narrow {
   max-width: 1200px;

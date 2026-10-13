@@ -160,7 +160,8 @@
             :key="index"
             class="mb-6 p-4 border-l-4 border-accent-gold bg-gray-50 rounded"
           >
-            <div v-if="riderCount === 1" class="mb-3">
+            <h4 class="font-bold text-text-dark mb-3">Rider {{ index + 1 }}</h4>
+            <div v-if="index === 0" class="mb-3">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input
                   :checked="rider.sameAsCustomer"
@@ -173,7 +174,7 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div v-if="!rider.sameAsCustomer || riderCount > 1">
+              <div v-if="!usesContactName(index)">
                 <label class="form-label">First Name *</label>
                 <input
                   :value="rider.firstName"
@@ -184,7 +185,7 @@
                   required
                 />
               </div>
-              <div v-if="!rider.sameAsCustomer || riderCount > 1">
+              <div v-if="!usesContactName(index)">
                 <label class="form-label">Last Name *</label>
                 <input
                   :value="rider.lastName"
@@ -207,8 +208,8 @@
               </div>
             </div>
 
-            <div v-if="rider.sameAsCustomer && riderCount === 1" class="text-sm text-light-brown mt-3">
-              Using your contact information above.
+            <div v-if="usesContactName(index)" class="text-sm text-light-brown mt-3">
+              Using your contact name above.
             </div>
           </div>
         </div>
@@ -257,11 +258,9 @@
             <h3 class="font-bold text-text-dark mb-3">Rider{{ riderCount > 1 ? 's' : '' }}</h3>
             <div class="space-y-3 text-sm">
               <div v-for="(rider, index) in riders" :key="index" class="pb-3 last:pb-0 last:border-0 border-b border-border-light">
-                <p class="font-semibold">
-                  {{ rider.sameAsCustomer ? 'You (Rider ' : 'Rider ' }}{{ index + 1 }}{{ rider.sameAsCustomer ? ')' : '' }}
-                </p>
-                <p v-if="!rider.sameAsCustomer" class="text-light-brown">
-                  {{ rider.firstName }} {{ rider.lastName }}
+                <p class="font-semibold">Rider {{ index + 1 }}{{ usesContactName(index) ? ' (you)' : '' }}</p>
+                <p class="text-light-brown">
+                  {{ riderName(index) }}
                   <span v-if="rider.dateOfBirth">(DOB: {{ rider.dateOfBirth }})</span>
                 </p>
               </div>
@@ -295,7 +294,7 @@
                 <span class="text-light-brown">Date & Time:</span> {{ formatDate(selectedDate) }} at {{ formatTime(selectedTime) }}
               </div>
               <div>
-                <span class="text-light-brown">Rider:</span> {{ getDisplayRiderName() }}
+                <span class="text-light-brown">Rider{{ riders.length > 1 ? 's' : '' }}:</span> {{ riders.map((_, i) => riderName(i)).join(', ') }}
               </div>
               <div v-if="createdBookingId" class="pt-3 border-t border-border-light">
                 <span class="text-light-brown">Booking ID:</span> {{ createdBookingId }}
@@ -366,10 +365,9 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
 import { useBookingStore } from '@/stores/bookingStore'
-import { fetchLessonTypes } from '@/services/supabaseService'
+import { fetchLessonTypes, fetchBusinessTimezone } from '@/services/apiService'
 import { getBookableSlots, formatTimeForDisplay, type BookableSlot } from '@/services/availabilityService'
 import { createGuestBooking } from '@/services/guestBookingService'
-import { supabase } from '@/lib/supabase'
 import type { LessonType } from '@/types/models'
 import { format, parseISO } from 'date-fns'
 
@@ -425,27 +423,35 @@ async function submitBooking() {
   bookingError.value = ''
 
   try {
-    // Build start/end times as ISO strings
-    const [year, month, day] = selectedDate.value.split('-')
-    const [hours, minutes] = selectedTime.value.split(':')
-    const startTime = new Date(
-      parseInt(year),
-      parseInt(month) - 1,
-      parseInt(day),
-      parseInt(hours),
-      parseInt(minutes)
-    ).toISOString()
+    // Build start/end times as ISO strings representing business-local wall times
+    // selectedDate is YYYY-MM-DD and selectedTime is HH:MM (both business-local)
+    // Backend expects TIMESTAMP (wall-clock time), not TIMESTAMPTZ (absolute moments)
+    // We construct ISO strings directly without using new Date() which uses browser timezone
+    const startTime = `${selectedDate.value}T${selectedTime.value}:00`
 
-    const endTime = new Date(
-      new Date(startTime).getTime() + (selectedLessonType.value?.durationMinutes || 60) * 60000
-    ).toISOString()
+    // Calculate end time by adding lesson duration to start time
+    const [startHours, startMinutes] = selectedTime.value.split(':').map(Number)
+    const durationMinutes = selectedLessonType.value?.durationMinutes || 60
+    const totalMinutes = startHours * 60 + startMinutes + durationMinutes
+    const endHours = Math.floor(totalMinutes / 60) % 24
+    const endMinutes = totalMinutes % 60
+
+    // Check if end time crosses into next day
+    const dayOffset = Math.floor((startHours * 60 + startMinutes + durationMinutes) / (24 * 60))
+    const [year, month, day] = selectedDate.value.split('-').map(Number)
+    const endDate = new Date(year, month - 1, day + dayOffset)
+    const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`
+    const endTime = `${endDateStr}T${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}:00`
 
     // Prepare riders array
-    const ridersData = riders.value.map((rider, index) => ({
-      firstName: rider.sameAsCustomer && index === 0 ? customerInfo.value.firstName : rider.firstName,
-      lastName: rider.sameAsCustomer && index === 0 ? customerInfo.value.lastName : rider.lastName,
-      dateOfBirth: rider.dateOfBirth || undefined,
-    }))
+    const ridersData = riders.value.map((rider, index) => {
+      const usesContact = usesContactName(index)
+      return {
+        firstName: (usesContact ? customerInfo.value.firstName : rider.firstName).trim(),
+        lastName: (usesContact ? customerInfo.value.lastName : rider.lastName).trim(),
+        dateOfBirth: rider.dateOfBirth || undefined,
+      }
+    })
 
     const result = await createGuestBooking({
       lessonTypeId: selectedLessonType.value?.id || '',
@@ -516,19 +522,16 @@ function formatDate(dateStr: string): string {
   }
 }
 
-function getDisplayRiderName(): string {
-  if (riders.value.length === 1) {
-    if (riders.value[0].sameAsCustomer) {
-      return `${customerInfo.value.firstName} ${customerInfo.value.lastName}`
-    }
-    return `${riders.value[0].firstName} ${riders.value[0].lastName}`
-  }
-  return riders.value.map((r, i) => {
-    if (i === 0 && r.sameAsCustomer) {
-      return `${customerInfo.value.firstName} ${customerInfo.value.lastName}`
-    }
-    return `${r.firstName} ${r.lastName}`
-  }).join(', ')
+// Only Rider 1 can be the person booking; every other rider always has their own name.
+function usesContactName(index: number): boolean {
+  return index === 0 && !!riders.value[0]?.sameAsCustomer
+}
+
+function riderName(index: number): string {
+  const rider = riders.value[index]
+  return usesContactName(index)
+    ? `${customerInfo.value.firstName} ${customerInfo.value.lastName}`
+    : `${rider.firstName} ${rider.lastName}`
 }
 
 watch([() => selectedLessonType.value?.id, selectedDate], loadSlots, { immediate: true, flush: 'sync' })
@@ -536,8 +539,7 @@ watch([() => selectedLessonType.value?.id, selectedDate], loadSlots, { immediate
 onMounted(async () => {
   bookingStore.setStep(0)
   lessonTypes.value = await fetchLessonTypes(true)
-  const { data } = await supabase.from('business_config').select('config_value').eq('config_key', 'business_timezone').single()
-  businessTimezone.value = data?.config_value || 'business local time'
+  businessTimezone.value = (await fetchBusinessTimezone()) || 'business local time'
 })
 
 const selectLesson = (lesson: LessonType) => bookingStore.setLessonType(lesson)

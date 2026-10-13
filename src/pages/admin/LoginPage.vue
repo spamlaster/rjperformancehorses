@@ -43,10 +43,10 @@
         </div>
       </form>
 
-      <div class="mt-8 p-4 bg-blue-50 rounded-lg text-sm text-blue-800 border border-blue-200">
-        <p class="font-bold mb-3">Phase 2B: Supabase Auth Active</p>
+      <div v-if="isDev" class="mt-8 p-4 bg-blue-50 rounded-lg text-sm text-blue-800 border border-blue-200">
+        <p class="font-bold mb-3">Development</p>
         <p class="text-xs mb-2">
-          To create a development admin account after <code>npm run db:reset</code>, see setup instructions in the repository documentation.
+          To create an admin account, run <code>php artisan admin:create you@example.com</code> in <code>api/</code>.
         </p>
       </div>
     </div>
@@ -61,6 +61,7 @@ import { useAuthStore } from '@/stores/authStore'
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const isDev = import.meta.env.DEV
 
 const email = ref('')
 const password = ref('')

@@ -1,7 +1,12 @@
 <template>
   <AdminLayout>
     <div class="space-y-8">
-      <h1 class="text-3xl font-serif font-bold text-text-dark">Availability Management</h1>
+      <div>
+        <h1 class="text-3xl font-serif font-bold text-text-dark">Availability Management</h1>
+        <p class="text-light-brown text-sm mt-2">
+          Bookable lesson times are based on both instructor and eligible horse availability.
+        </p>
+      </div>
 
       <!-- Instructor Availability -->
       <div class="card">
@@ -30,7 +35,13 @@
                   <span v-if="!slot.active" class="ml-2 text-xs text-light-brown">(disabled)</span>
                 </div>
                 <label class="flex items-center gap-2">
-                  <input v-model="slot.active" type="checkbox" class="w-4 h-4" />
+                  <input
+                    :checked="slot.active"
+                    :disabled="savingIds.has(slot.id)"
+                    type="checkbox"
+                    class="w-4 h-4"
+                    @change="toggleInstructorActive(slot.id, $event)"
+                  />
                   <span class="text-sm">Active</span>
                 </label>
                 <button @click="removeInstructorWindow(slot.id)" class="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">
@@ -90,6 +101,12 @@
             <div class="space-y-6 pl-4">
               <div v-for="dayOfWeek in [0, 1, 2, 3, 4, 5, 6]" :key="`${horse.id}-${dayOfWeek}`" class="space-y-3">
                 <h4 class="font-medium text-text-dark">{{ dayName(dayOfWeek) }}</h4>
+                <p
+                  v-if="getHorseWindowsForDay(horse.id, dayOfWeek).length && !hasActiveInstructorHours(dayOfWeek)"
+                  class="text-xs text-light-brown italic"
+                >
+                  Not currently bookable — no instructor hours this day
+                </p>
 
                 <div class="pl-4 space-y-2 border-l-2 border-border-light">
                   <div v-if="getHorseWindowsForDay(horse.id, dayOfWeek).length === 0" class="text-light-brown italic">
@@ -102,7 +119,13 @@
                       <span v-if="!slot.active" class="ml-2 text-xs text-light-brown">(disabled)</span>
                     </div>
                     <label class="flex items-center gap-2">
-                      <input v-model="slot.active" type="checkbox" class="w-4 h-4" />
+                      <input
+                        :checked="slot.active"
+                        :disabled="savingIds.has(slot.id)"
+                        type="checkbox"
+                        class="w-4 h-4"
+                        @change="toggleHorseActive(slot.id, $event)"
+                      />
                       <span class="text-sm">Active</span>
                     </label>
                     <button @click="removeHorseWindow(slot.id)" class="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">
@@ -283,6 +306,38 @@ const getInstructorWindowsForDay = (dayOfWeek: number) => {
 const getHorseWindowsForDay = (horseId: string, dayOfWeek: number) => {
   return adminStore.horseRecurringAvailability.filter(a => a.horseId === horseId && a.dayOfWeek === dayOfWeek)
 }
+
+// Horse windows only produce public slots on days the instructor also has active hours.
+const hasActiveInstructorHours = (dayOfWeek: number) => {
+  return getInstructorWindowsForDay(dayOfWeek).some(a => a.active)
+}
+
+// Active toggles: the store only changes after the API confirms the save.
+const savingIds = reactive(new Set<string>())
+
+const saveActiveToggle = async (
+  id: string,
+  event: Event,
+  save: (id: string, updates: { active: boolean }) => Promise<boolean>,
+) => {
+  const checkbox = event.target as HTMLInputElement
+  const active = checkbox.checked
+  savingIds.add(id)
+  const saved = await save(id, { active })
+  savingIds.delete(id)
+  if (saved) {
+    success(active ? 'Availability window enabled' : 'Availability window disabled')
+  } else {
+    checkbox.checked = !active
+    error('Unable to save availability change')
+  }
+}
+
+const toggleInstructorActive = (id: string, event: Event) =>
+  saveActiveToggle(id, event, adminStore.updateInstructorAvailabilityLocal)
+
+const toggleHorseActive = (id: string, event: Event) =>
+  saveActiveToggle(id, event, adminStore.updateHorseAvailabilityLocal)
 
 const getHorseName = (horseId?: string) => {
   if (!horseId) return 'Instructor'

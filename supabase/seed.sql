@@ -13,6 +13,9 @@ INSERT INTO lesson_types (id, name, description, duration_minutes, price, diffic
   ('lesson-7', 'Pole Bending', 'Learn precise weaving patterns and speed control.', 60, 75.00, 'intermediate', 1, TRUE),
   ('lesson-8', 'Weekly Barrel Training', 'Two 60-minute barrel racing lessons per week for committed riders.', 120, 130.00, 'intermediate', 1, TRUE);
 
+-- Sibling/Joined: two riders on separate horses (other lessons keep the 1/1 defaults)
+UPDATE lesson_types SET required_rider_count = 2, required_horse_count = 2 WHERE id = 'lesson-4';
+
 -- Customers (development-only fictional accounts)
 -- Example 1: Parent with two child riders
 INSERT INTO customers (id, first_name, last_name, email, phone) VALUES
