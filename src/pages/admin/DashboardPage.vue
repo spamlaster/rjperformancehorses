@@ -41,6 +41,15 @@
           </div>
         </div>
 
+        <p v-if="calendarError" role="alert" class="text-red-700">
+          {{ calendarError }}
+          <button class="underline ml-2" @click="loadCalendar">Try again</button>
+        </p>
+        <p v-else-if="calendarLoading" role="status" class="text-light-brown">Loading the monthly calendar…</p>
+        <BookingCalendar v-else :bookings="adminStore.bookings" :reservations="weeklyReservations"
+          :customers="adminStore.customers" :lessons="adminStore.lessonTypes"
+          :horses="adminStore.horses" :timezone="calendarTimezone" />
+
         <!-- Today's Lessons -->
         <div class="card card-padding">
           <h2 class="text-2xl font-serif font-bold text-text-dark mb-6">Today's Schedule</h2>
@@ -109,12 +118,34 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { format, parseISO, isToday } from 'date-fns'
 import AdminLayout from '@/components/layouts/AdminLayout.vue'
 import { useAdminStore } from '@/stores/adminStore'
+import BookingCalendar from '@/components/admin/BookingCalendar.vue'
+import { fetchWeeklyReservations, type WeeklyReservation } from '@/services/reservationService'
+import { fetchBusinessTimezone } from '@/services/apiService'
 
 const adminStore = useAdminStore()
+const weeklyReservations = ref<WeeklyReservation[]>([])
+const calendarTimezone = ref('America/Denver')
+const calendarLoading = ref(true)
+const calendarError = ref('')
+
+async function loadCalendar() {
+  calendarLoading.value = true
+  calendarError.value = ''
+  try {
+    const [reservations, timezone] = await Promise.all([fetchWeeklyReservations(), fetchBusinessTimezone()])
+    weeklyReservations.value = reservations
+    calendarTimezone.value = timezone || 'America/Denver'
+  } catch (err) {
+    calendarError.value = err instanceof Error ? err.message : 'Unable to load the calendar.'
+  } finally {
+    calendarLoading.value = false
+  }
+}
+onMounted(loadCalendar)
 
 const activeHorses = computed(() => {
   return adminStore.horses.filter(h => h.active).length
