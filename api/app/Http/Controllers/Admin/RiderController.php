@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\Customer;
 use App\Models\Rider;
+use App\Services\RiderIdentityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -10,12 +12,19 @@ class RiderController extends AdminController
 {
     public function index(): JsonResponse
     {
-        return response()->json(Rider::query()->orderBy('id')->get());
+        return response()->json(Rider::query()->whereNull('deleted_at')->whereNull('merged_into_id')->orderBy('id')->get());
     }
 
     public function store(Request $request): JsonResponse
     {
-        return response()->json(Rider::create($this->fields($request, partial: false))->refresh(), 201);
+        $input = $this->fields($request, partial: false);
+        $customer = ! empty($input['customer_id']) ? Customer::find($input['customer_id'])
+            : (! empty($input['email']) ? Customer::where('email', mb_strtolower(trim($input['email'])))->whereNull('deleted_at')->first() : null);
+        if ($customer) {
+            return response()->json(app(RiderIdentityService::class)->findOrCreate($customer, $input)->refresh(), 201);
+        }
+
+        return response()->json(Rider::create($input)->refresh(), 201);
     }
 
     public function update(Request $request, Rider $rider): JsonResponse

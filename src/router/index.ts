@@ -11,6 +11,8 @@ import FAQPage from '@/pages/public/FAQPage.vue'
 import ContactPage from '@/pages/public/ContactPage.vue'
 import BookingWizardPage from '@/pages/public/BookingWizardPage.vue'
 import ReservationPage from '@/pages/public/ReservationPage.vue'
+import RiderSignInPage from '@/pages/public/RiderSignInPage.vue'
+import RiderAccountPage from '@/pages/public/RiderAccountPage.vue'
 
 // Admin pages
 import LoginPage from '@/pages/admin/LoginPage.vue'
@@ -19,6 +21,7 @@ import RidersPage from '@/pages/admin/RidersPage.vue'
 import HorsesPage from '@/pages/admin/HorsesPage.vue'
 import BookingsPage from '@/pages/admin/BookingsPage.vue'
 import AvailabilityPage from '@/pages/admin/AvailabilityPage.vue'
+import AccountPage from '@/pages/admin/AccountPage.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -55,6 +58,16 @@ const routes: RouteRecordRaw[] = [
     path: '/book',
     name: 'Booking',
     component: BookingWizardPage,
+  },
+  {
+    path: '/rider/sign-in',
+    name: 'RiderSignIn',
+    component: RiderSignInPage,
+  },
+  {
+    path: '/rider',
+    name: 'RiderAccount',
+    component: RiderAccountPage,
   },
   {
     path: '/reservation',
@@ -99,6 +112,12 @@ const routes: RouteRecordRaw[] = [
     path: '/admin/availability',
     name: 'AdminAvailability',
     component: AvailabilityPage,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/admin/account',
+    name: 'AdminAccount',
+    component: AccountPage,
     meta: { requiresAuth: true },
   },
   {

@@ -104,6 +104,7 @@
       <!-- Step 2: Contact & Rider Information -->
       <div v-show="currentStep === 2">
         <h2 class="text-2xl font-serif font-bold mb-6">Contact & Rider Information</h2>
+        <p v-if="!savedAccount" class="mb-4 text-light-brown"><router-link to="/rider/sign-in?returnTo=/book" class="underline font-semibold">Sign in or create a rider account</router-link> to reuse your saved riders.</p>
 
         <!-- Customer Information Section -->
         <div class="mb-8">
@@ -162,7 +163,14 @@
             class="mb-6 p-4 border-l-4 border-accent-gold bg-gray-50 rounded"
           >
             <h4 class="font-bold text-text-dark mb-3">Rider {{ index + 1 }}</h4>
-            <div v-if="index === 0" class="mb-3">
+            <div v-if="savedAccount?.riders.length" class="mb-3">
+              <label :for="`saved-rider-${index}`" class="form-label">Choose a saved rider</label>
+              <select :id="`saved-rider-${index}`" :value="rider.id || ''" class="form-select" @change="selectSavedRider(index, ($event.target as HTMLSelectElement).value)">
+                <option value="">Enter a new rider</option>
+                <option v-for="saved in savedAccount.riders" :key="saved.id" :value="saved.id">{{ saved.first_name }} {{ saved.last_name }}</option>
+              </select>
+            </div>
+            <div v-if="index === 0 && !rider.id" class="mb-3">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input
                   :checked="rider.sameAsCustomer"
@@ -175,7 +183,7 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div v-if="!usesContactName(index)">
+              <div v-if="!usesContactName(index) && !rider.id">
                 <label class="form-label">First Name *</label>
                 <input
                   :value="rider.firstName"
@@ -186,7 +194,7 @@
                   required
                 />
               </div>
-              <div v-if="!usesContactName(index)">
+              <div v-if="!usesContactName(index) && !rider.id">
                 <label class="form-label">Last Name *</label>
                 <input
                   :value="rider.lastName"
@@ -197,7 +205,7 @@
                   required
                 />
               </div>
-              <div class="md:col-span-2">
+              <div v-if="!rider.id" class="md:col-span-2">
                 <label class="form-label">Date of Birth *</label>
                 <input
                   :value="rider.dateOfBirth"
@@ -376,6 +384,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
+import { loadRiderAccount, type RiderAccount } from '@/services/riderAccountService'
 import { useBookingStore } from '@/stores/bookingStore'
 import { fetchLessonTypes, fetchBusinessTimezone } from '@/services/apiService'
 import { getBookableSlots, formatTimeForDisplay, type BookableSlot } from '@/services/availabilityService'
@@ -384,6 +393,7 @@ import type { LessonType } from '@/types/models'
 import { format, parseISO } from 'date-fns'
 
 const bookingStore = useBookingStore()
+const savedAccount = ref<RiderAccount | null>(null)
 const lessonTypes = ref<LessonType[]>([])
 const businessTimezone = ref('')
 const slots = ref<BookableSlot[]>([])
@@ -461,6 +471,7 @@ async function submitBooking() {
     const ridersData = riders.value.map((rider, index) => {
       const usesContact = usesContactName(index)
       return {
+        id: rider.id,
         firstName: (usesContact ? customerInfo.value.firstName : rider.firstName).trim(),
         lastName: (usesContact ? customerInfo.value.lastName : rider.lastName).trim(),
         dateOfBirth: rider.dateOfBirth || undefined,
@@ -517,6 +528,14 @@ function updateRider(index: number, info: any) {
   bookingStore.updateRider(index, info)
 }
 
+function selectSavedRider(index: number, id: string) {
+  const saved = savedAccount.value?.riders.find(r => r.id === id)
+  bookingStore.updateRider(index, {
+    id: saved?.id, firstName: saved?.first_name || '', lastName: saved?.last_name || '',
+    dateOfBirth: saved?.date_of_birth?.slice(0, 10) || '', sameAsCustomer: false,
+  })
+}
+
 function toggleSameAsCustomer(index: number) {
   const newValue = !riders.value[index].sameAsCustomer
   if (newValue) {
@@ -564,6 +583,15 @@ watch([() => selectedLessonType.value?.id, selectedDate], loadSlots, { immediate
 
 onMounted(async () => {
   bookingStore.setStep(0)
+  try {
+    savedAccount.value = await loadRiderAccount()
+    if (savedAccount.value) {
+      const customer = savedAccount.value.customer
+      bookingStore.updateCustomerInfo({ firstName: customer.first_name, lastName: customer.last_name, email: customer.email, phone: customer.phone || '' })
+    }
+  } catch {
+    // Guest booking remains available if account loading fails.
+  }
   const availableLessons = await fetchLessonTypes(true)
   // Keep the existing lesson ID for availability and booking requests.
   const combinedLesson = availableLessons.find(lesson => lesson.name === 'Barrel Racing & Pole Bending')

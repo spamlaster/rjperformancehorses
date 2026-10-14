@@ -10,6 +10,7 @@ export interface GuestCustomer {
 }
 
 export interface RiderInfo {
+  id?: string;
   firstName: string;
   lastName: string;
   dateOfBirth?: string;

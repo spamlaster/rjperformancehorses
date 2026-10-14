@@ -36,7 +36,7 @@ class PublicController extends Controller
 
     public function createGuestBooking(StoreGuestBookingRequest $request, BookingService $bookings): JsonResponse
     {
-        $result = $bookings->createGuestBooking($request->validated());
+        $result = $bookings->createGuestBooking($request->validated(), $request->user());
 
         return response()->json([
             'success' => true,

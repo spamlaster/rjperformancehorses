@@ -10,9 +10,10 @@ use App\Models\BusinessConfig;
 use App\Models\Customer;
 use App\Models\LessonType;
 use App\Models\RecurringLesson;
-use App\Models\Rider;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Guest booking (port of Postgres create_guest_booking). Input is already
@@ -28,12 +29,12 @@ class BookingService
      *
      * @throws SlotUnavailableException
      */
-    public function createGuestBooking(array $data): array
+    public function createGuestBooking(array $data, ?User $user = null): array
     {
         $start = CarbonImmutable::parse($data['start_time'], 'UTC')->format('Y-m-d H:i:s');
         $end = CarbonImmutable::parse($data['end_time'], 'UTC')->format('Y-m-d H:i:s');
 
-        return DB::transaction(function () use ($data, $start, $end) {
+        return DB::transaction(function () use ($data, $start, $end, $user) {
             // One instructor: serialize booking creation so two requests cannot both pass
             // the recheck. Must be the first statement: InnoDB's snapshot for the reads
             // below is taken after this lock is held, so they see committed bookings.
@@ -56,17 +57,29 @@ class BookingService
             }
 
             // Conservative deduplication by email (case-insensitive collation).
-            $customer = Customer::query()->where('email', $data['customer']['email'])->whereNull('deleted_at')->first()
+            $customer = $user && $user->role === null ? app(RiderAccountService::class)->customerFor($user)
+                : Customer::query()->where('email', mb_strtolower(trim($data['customer']['email'])))->whereNull('deleted_at')->first()
                 ?? Customer::create([
                     'first_name' => $data['customer']['first_name'],
                     'last_name' => $data['customer']['last_name'],
-                    'email' => $data['customer']['email'],
+                    'email' => mb_strtolower(trim($data['customer']['email'])),
                     'phone' => $data['customer']['phone'] ?? null,
                 ]);
 
+            if ($customer->user_id !== null && (! $user || $customer->user_id !== $user->id)) {
+                throw ValidationException::withMessages(['customer.email' => 'Sign in to book with your existing rider account.']);
+            }
+
             $riderIds = [];
             foreach ($data['riders'] as $input) {
-                $riderIds[] = $this->matchOrCreateRider($customer, $input)->id;
+                if (! empty($input['id']) && (! $user || $user->role !== null)) {
+                    throw ValidationException::withMessages(['riders' => 'Sign in to book with a saved rider.']);
+                }
+                $riderIds[] = app(RiderIdentityService::class)->findOrCreate($customer, $input)->id;
+            }
+
+            if (count(array_unique($riderIds)) !== count($riderIds)) {
+                throw ValidationException::withMessages(['riders' => 'Choose a different person for each rider in this lesson.']);
             }
 
             $token = bin2hex(random_bytes(32));
@@ -111,26 +124,5 @@ class BookingService
                 'management_token' => $token,
             ];
         });
-    }
-
-    /** Same customer + exact name, and same date of birth unless none was given. */
-    private function matchOrCreateRider(Customer $customer, array $input): Rider
-    {
-        $dateOfBirth = $input['date_of_birth'] ?? null;
-
-        return Rider::query()
-            ->where('customer_id', $customer->id)
-            ->where('first_name', $input['first_name'])
-            ->where('last_name', $input['last_name'])
-            ->when($dateOfBirth !== null, fn ($q) => $q->where('date_of_birth', $dateOfBirth))
-            ->whereNull('deleted_at')
-            ->first()
-            ?? Rider::create([
-                'customer_id' => $customer->id,
-                'first_name' => $input['first_name'],
-                'last_name' => $input['last_name'],
-                'date_of_birth' => $dateOfBirth,
-                'riding_experience' => 'beginner',
-            ]);
     }
 }

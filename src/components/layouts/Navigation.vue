@@ -23,7 +23,7 @@ import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 const route = useRoute()
 const mobileMenuOpen = ref(false)
-const links = [{ path: '/', label: 'Home' }, { path: '/about', label: 'About' }, { path: '/lessons', label: 'Lessons' }, { path: '/pricing', label: 'Pricing' }, { path: '/faq', label: 'FAQ' }, { path: '/contact', label: 'Contact' }, { path: '/reservation', label: 'Manage Booking' }]
+const links = [{ path: '/', label: 'Home' }, { path: '/about', label: 'About' }, { path: '/lessons', label: 'Lessons' }, { path: '/pricing', label: 'Pricing' }, { path: '/faq', label: 'FAQ' }, { path: '/contact', label: 'Contact' }, { path: '/rider', label: 'Rider Account' }, { path: '/reservation', label: 'Manage Booking' }]
 </script>
 <style scoped>
 .ranch-navigation { position: relative; z-index: 50; background: #faf7f2; color: #201713; }

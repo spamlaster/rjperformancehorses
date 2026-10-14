@@ -22,6 +22,7 @@ class StoreGuestBookingRequest extends FormRequest
             'customer.email' => ['required', 'email', 'max:255'],
             'customer.phone' => ['nullable', 'string', 'max:20'],
             'riders' => ['required', 'array', 'min:1'],
+            'riders.*.id' => ['nullable', 'string', 'max:36'],
             'riders.*.first_name' => ['required', 'string', 'max:100'],
             'riders.*.last_name' => ['required', 'string', 'max:100'],
             'riders.*.date_of_birth' => ['nullable', 'date_format:Y-m-d'],

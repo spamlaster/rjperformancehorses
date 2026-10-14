@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GuestReservationController;
 use App\Http\Controllers\PublicController;
+use App\Http\Controllers\RiderAccountController;
 use Illuminate\Support\Facades\Route;
 
 // Public (replaces the anon RPCs and public reads).
@@ -20,6 +21,14 @@ Route::middleware('throttle:reservation-management')->group(function () {
     Route::post('/reservations/skip', [GuestReservationController::class, 'skip']);
 });
 
+Route::middleware('auth:sanctum')->prefix('rider/account')->group(function () {
+    Route::get('/', [RiderAccountController::class, 'show']);
+    Route::patch('/', [RiderAccountController::class, 'update']);
+    Route::post('/riders', [RiderAccountController::class, 'createRider']);
+    Route::post('/reservations/{id}/cancel', [RiderAccountController::class, 'cancel']);
+    Route::post('/reservations/{id}/skip', [RiderAccountController::class, 'skip']);
+});
+
 // Admin session auth (Sanctum SPA cookies; CSRF cookie at /api/sanctum/csrf-cookie).
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::middleware('auth:sanctum')->group(function () {
@@ -29,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Admin (replaces the is_admin() RLS policies).
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    Route::patch('/password', [AuthController::class, 'updatePassword'])->middleware('throttle:password-update');
     Route::get('/lesson-types', [Admin\LessonTypeController::class, 'index']);
     Route::patch('/lesson-types/{lessonType}', [Admin\LessonTypeController::class, 'update']);
     Route::apiResource('horses', Admin\HorseController::class)->except('show');

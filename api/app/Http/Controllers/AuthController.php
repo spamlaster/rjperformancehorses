@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UpdatePasswordRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 /** Sanctum SPA (cookie session) login for admins. */
 class AuthController extends Controller
@@ -45,6 +47,19 @@ class AuthController extends Controller
         $this->endSession($request);
 
         return response()->json(['success' => true]);
+    }
+
+    public function updatePassword(UpdatePasswordRequest $request): JsonResponse
+    {
+        $request->user()->update([
+            'password' => $request->validated('password'),
+            'remember_token' => Str::random(60),
+        ]);
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
+
+        return response()->json(['message' => 'Password updated successfully.']);
     }
 
     private function endSession(Request $request): void

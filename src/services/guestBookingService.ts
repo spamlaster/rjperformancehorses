@@ -18,6 +18,7 @@ export interface GuestBookingPayload {
     phone: string
   }
   riders: Array<{
+    id?: string
     firstName: string
     lastName: string
     dateOfBirth?: string
@@ -60,6 +61,7 @@ export async function createGuestBooking(payload: GuestBookingPayload): Promise<
         phone: payload.customer.phone,
       },
       riders: payload.riders.map(r => ({
+        id: r.id,
         first_name: r.firstName,
         last_name: r.lastName,
         date_of_birth: r.dateOfBirth || null,

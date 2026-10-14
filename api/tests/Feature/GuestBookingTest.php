@@ -137,7 +137,7 @@ class GuestBookingTest extends TestCase
         $this->assertSame(1, DB::table('riders')->count(), 'rider matched by name when no date of birth given');
 
         $this->guestBooking("{$this->date} 11:00:00", 'jane@example.com', [['first_name' => 'emma', 'last_name' => 'Doe', 'date_of_birth' => '2012-05-01']]);
-        $this->assertSame(2, DB::table('riders')->count(), 'rider names match exactly (case-sensitive)');
+        $this->assertSame(1, DB::table('riders')->count(), 'capitalization changes reuse the same rider');
     }
 
     public function test_browsing_dates_does_not_use_up_the_booking_rate_limit(): void

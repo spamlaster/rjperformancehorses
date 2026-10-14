@@ -46,6 +46,10 @@
         >
           Availability
         </router-link>
+        <router-link to="/admin/account" class="block px-4 py-2 rounded-md transition-colors"
+          :class="isActive('/admin/account') ? 'bg-accent-gold text-white' : 'text-text-dark hover:bg-gray-100'">
+          Account Settings
+        </router-link>
       </nav>
 
       <!-- Logout -->
@@ -72,6 +76,11 @@
         >
           Logout
         </button>
+      </div>
+
+      <div class="md:hidden px-4 py-2 bg-white border-b border-border-light">
+        <router-link to="/admin/account" class="text-sm font-semibold text-dark-brown underline">Account Settings</router-link>
+        <router-link v-if="route.path === '/admin/account'" to="/admin/dashboard" class="text-sm ml-4 underline">Back to Dashboard</router-link>
       </div>
 
       <!-- Content -->
@@ -108,8 +117,8 @@ const isActive = (path: string) => {
   return route.path === path || route.path.startsWith(path + '/')
 }
 
-const logout = () => {
-  authStore.logout()
+const logout = async () => {
+  await authStore.logout()
   router.push('/admin/login')
 }
 </script>
