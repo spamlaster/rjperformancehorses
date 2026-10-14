@@ -1,7 +1,11 @@
 <template>
   <AdminLayout>
     <div class="space-y-6">
-      <h1 class="text-3xl font-serif font-bold text-text-dark">Bookings</h1>
+      <div class="flex justify-between items-center gap-4">
+        <h1 class="text-3xl font-serif font-bold text-text-dark">Bookings</h1>
+        <button class="btn-primary" @click="showAddSession = true">+ Add Session</button>
+      </div>
+      <AddSessionForm v-if="showAddSession" :rider-id="selectedRiderId" @cancel="showAddSession = false" @saved="sessionSaved" />
       <p v-if="actionError" role="alert" class="text-red-700">{{ actionError }}</p>
       <p v-if="notice" role="status">{{ notice }}</p>
 
@@ -90,6 +94,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import AddSessionForm from '@/components/admin/AddSessionForm.vue'
 import { format, parseISO } from 'date-fns'
 import AdminLayout from '@/components/layouts/AdminLayout.vue'
 import { useAdminStore } from '@/stores/adminStore'
@@ -100,6 +106,18 @@ import type { Booking } from '@/types/models'
 import { fetchSignedWaivers, type SignedWaiver } from '@/services/waiverService'
 
 const adminStore = useAdminStore()
+const route = useRoute()
+const selectedRiderId = typeof route.query.rider === 'string' ? route.query.rider : undefined
+const showAddSession = ref(!!selectedRiderId)
+async function sessionSaved() {
+  showAddSession.value = false
+  notice.value = 'Session saved. The selected time is now booked.'
+  try {
+    await refresh()
+  } catch (err) {
+    actionError.value = err instanceof Error ? err.message : 'Session saved, but the booking list could not refresh.'
+  }
+}
 const statusFilter = ref('')
 const waiverDialog = ref<HTMLDialogElement | null>(null)
 const signedWaivers = ref<SignedWaiver[]>([])

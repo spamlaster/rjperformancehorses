@@ -70,6 +70,7 @@
                 <td class="p-4 text-sm">{{ rider.phone || '—' }}</td>
                 <td class="p-4"><span class="badge badge-info">{{ rider.experienceLevel }}</span></td>
                 <td class="p-4 flex gap-2">
+                  <router-link :to="{ path: '/admin/bookings', query: { rider: rider.id } }" class="text-xs px-2 py-1 bg-dark-brown text-white rounded">Add Session</router-link>
                   <button
                     @click="editRider(rider)"
                     class="text-xs px-2 py-1 bg-accent-gold text-white rounded hover:bg-warm-gold"

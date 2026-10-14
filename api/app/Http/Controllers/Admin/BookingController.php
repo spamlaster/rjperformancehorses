@@ -5,13 +5,34 @@ namespace App\Http\Controllers\Admin;
 use App\Models\Booking;
 use App\Models\BusinessConfig;
 use App\Models\RecurringLesson;
+use App\Services\AdminBookingService;
 use App\Services\RecurringLessonService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class BookingController extends AdminController
 {
+    public function store(Request $request, AdminBookingService $bookings): JsonResponse
+    {
+        $data = $request->validate([
+            'customer_id' => ['nullable', 'string', Rule::exists('customers', 'id')->whereNull('deleted_at')],
+            'lesson_type_id' => ['required', 'string', Rule::exists('lesson_types', 'id')->where('active', true)],
+            'rider_ids' => ['required', 'array', 'min:1'],
+            'rider_ids.*' => ['required', 'string', 'distinct', 'exists:riders,id'],
+            'horse_ids' => ['required', 'array', 'min:1'],
+            'horse_ids.*' => ['required', 'string', 'distinct', 'exists:horses,id'],
+            'date' => ['required', 'date_format:Y-m-d'],
+            'time' => ['required', 'date_format:H:i'],
+            'weekly' => ['sometimes', 'boolean'],
+            'notes' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        return response()->json($bookings->create($data), 201);
+    }
+
     /** Upcoming occurrences are projected from the indefinite rule, never a finite reservation horizon. */
     public function index(RecurringLessonService $reservations): JsonResponse
     {

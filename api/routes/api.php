@@ -46,6 +46,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::apiResource('customers', Admin\CustomerController::class)->only('index', 'store', 'update');
     Route::apiResource('riders', Admin\RiderController::class)->except('show');
     Route::get('/bookings', [Admin\BookingController::class, 'index']);
+    Route::post('/bookings', [Admin\BookingController::class, 'store']);
     Route::get('/bookings/{booking}/waivers', [Admin\WaiverController::class, 'booking']);
     Route::get('/recurring-lessons/{recurringLesson}/waivers', [Admin\WaiverController::class, 'recurring']);
     Route::post('/bookings/{booking}/cancel', [Admin\BookingController::class, 'cancel']);
