@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\LessonType;
+use App\Services\WaiverService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -26,6 +27,7 @@ class StoreGuestBookingRequest extends FormRequest
             'riders.*.first_name' => ['required', 'string', 'max:100'],
             'riders.*.last_name' => ['required', 'string', 'max:100'],
             'riders.*.date_of_birth' => ['nullable', 'date_format:Y-m-d'],
+            ...WaiverService::rules(),
         ];
     }
 

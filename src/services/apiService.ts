@@ -232,6 +232,7 @@ export async function fetchBookings(): Promise<Booking[]> {
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
     riderNames: row.rider_names || [],
+    waiverCount: row.waiver_acceptances_count || 0,
   }), 'bookings')
 }
 

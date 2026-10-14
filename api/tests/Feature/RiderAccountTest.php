@@ -120,6 +120,7 @@ class RiderAccountTest extends TestCase
             'lesson_type_id' => 'test-lesson', 'start_time' => "{$this->date}T{$time}",
             'end_time' => CarbonImmutable::parse("{$this->date} {$time}")->addHour()->format('Y-m-d\\TH:i:s'),
             'customer' => ['first_name' => 'Contact', 'last_name' => 'Name', 'email' => 'ignored@example.com'],
+            'waiver' => $this->waiverPayload(),
             'riders' => [['id' => $riderId, 'first_name' => 'Saved', 'last_name' => 'Rider', 'date_of_birth' => '2010-01-01']],
         ];
     }

@@ -15,7 +15,7 @@ class BookingController extends AdminController
     /** Upcoming occurrences are projected from the indefinite rule, never a finite reservation horizon. */
     public function index(RecurringLessonService $reservations): JsonResponse
     {
-        $bookings = Booking::query()->whereNull('deleted_at')->with('riders:id,first_name,last_name')->orderBy('start_time')->get();
+        $bookings = Booking::query()->whereNull('deleted_at')->with('riders:id,first_name,last_name')->withCount('waiverAcceptances')->orderBy('start_time')->get();
         $rows = $bookings->map(fn (Booking $b) => [
             ...$b->withoutRelations()->toArray(),
             'rider_names' => $b->riders->map(fn ($r) => "{$r->first_name} {$r->last_name}")->values()->all(),
@@ -39,6 +39,7 @@ class BookingController extends AdminController
                     'booking_type' => 'recurring',
                     'recurring_lesson_id' => $reservation->id,
                     'rider_names' => $details['rider_names'],
+                    'waiver_acceptances_count' => $bookings->where('recurring_lesson_id', $reservation->id)->sum('waiver_acceptances_count'),
                     'created_at' => $reservation->created_at,
                     'updated_at' => $reservation->updated_at,
                 ];

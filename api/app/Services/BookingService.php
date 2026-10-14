@@ -29,16 +29,18 @@ class BookingService
      *
      * @throws SlotUnavailableException
      */
-    public function createGuestBooking(array $data, ?User $user = null): array
+    public function createGuestBooking(array $data, ?User $user = null, array $metadata = []): array
     {
         $start = CarbonImmutable::parse($data['start_time'], 'UTC')->format('Y-m-d H:i:s');
         $end = CarbonImmutable::parse($data['end_time'], 'UTC')->format('Y-m-d H:i:s');
 
-        return DB::transaction(function () use ($data, $start, $end, $user) {
+        return DB::transaction(function () use ($data, $start, $end, $user, $metadata) {
             // One instructor: serialize booking creation so two requests cannot both pass
             // the recheck. Must be the first statement: InnoDB's snapshot for the reads
             // below is taken after this lock is held, so they see committed bookings.
             BusinessConfig::query()->whereKey('business_timezone')->lockForUpdate()->first();
+
+            $waiver = app(WaiverService::class)->validateSubmission($data);
 
             $lesson = LessonType::query()->findOrFail($data['lesson_type_id']);
             $date = substr($start, 0, 10);
@@ -116,6 +118,8 @@ class BookingService
             foreach (array_unique($riderIds) as $riderId) {
                 BookingRider::create(['booking_id' => $booking->id, 'rider_id' => $riderId]);
             }
+
+            app(WaiverService::class)->record($waiver, $booking, $riderIds, $data['waiver']['signatures'], $metadata);
 
             return [
                 'booking_id' => $booking->id,

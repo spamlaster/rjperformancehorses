@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\BusinessConfig;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -45,7 +46,7 @@ class ReferenceDataSeeder extends Seeder
 
                 I understand that helmets are required and agree to follow all safety instructions.
                 TXT,
-            'effective_date' => $now->toDateString(),
+            'effective_date' => $now->copy()->timezone(BusinessConfig::timezone())->toDateString(),
             'active' => true,
             'created_at' => $now,
             'updated_at' => $now,

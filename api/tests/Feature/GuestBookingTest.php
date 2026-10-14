@@ -90,6 +90,7 @@ class GuestBookingTest extends TestCase
             'start_time' => "{$this->date}T10:00:00",
             'end_time' => "{$this->date}T11:00:00",
             'customer' => ['first_name' => 'Jane', 'last_name' => 'Smith', 'email' => 'jane@example.com', 'phone' => '555-5678'],
+            'waiver' => $this->waiverPayload(2),
             'riders' => [
                 ['first_name' => 'Jane', 'last_name' => 'Smith', 'date_of_birth' => '2010-01-15'],
                 ['first_name' => 'Jack', 'last_name' => 'Smith', 'date_of_birth' => null],
@@ -112,6 +113,7 @@ class GuestBookingTest extends TestCase
             'end_time' => "{$this->date}T10:00:00",
             'customer' => ['first_name' => 'A', 'last_name' => 'B', 'email' => 'a@example.com'],
             'riders' => [['first_name' => 'A', 'last_name' => 'B']],
+            'waiver' => $this->waiverPayload(),
         ];
 
         $this->postJson('/api/bookings/guest', [...$base, 'customer' => ['first_name' => 'A', 'last_name' => 'B']])

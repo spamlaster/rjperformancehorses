@@ -4,6 +4,7 @@ namespace Tests\Concerns;
 
 use App\Services\AvailabilityService;
 use App\Services\BookingService;
+use App\Services\WaiverService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -19,6 +20,7 @@ trait BuildsSchedule
     {
         $dow = (int) date('w', strtotime($this->date));
         $now = now();
+        DB::table('waivers')->insert(['id' => 'test-waiver', 'title' => 'Test Riding Waiver', 'version' => 1, 'content' => 'Existing riding waiver test text.', 'effective_date' => '2000-01-01', 'active' => true, 'created_at' => $now, 'updated_at' => $now]);
         DB::table('lesson_types')->insert(['id' => 'test-lesson', 'name' => 'Test private', 'duration_minutes' => 60, 'price' => 1, 'required_horse_count' => 1, 'required_rider_count' => 1, 'created_at' => $now, 'updated_at' => $now]);
         DB::table('customers')->insert(['id' => 'test-customer', 'first_name' => 'Test', 'last_name' => 'Customer', 'email' => 'test@example.com', 'created_at' => $now, 'updated_at' => $now]);
         foreach (['test-h1' => 'One', 'test-h2' => 'Two', 'test-h3' => 'Three'] as $id => $name) {
@@ -50,7 +52,24 @@ trait BuildsSchedule
             'end_time' => date('Y-m-d H:i:s', strtotime($start) + $minutes * 60),
             'customer' => ['first_name' => 'Test', 'last_name' => 'Guest', 'email' => $email, 'phone' => null],
             'riders' => $riders,
+            'waiver' => $this->waiverPayload(count($riders)),
         ]);
+    }
+
+    protected function waiverPayload(int $riders = 1): array
+    {
+        $waiver = WaiverService::current();
+
+        return [
+            'id' => $waiver->id,
+            'document_hash' => WaiverService::fingerprint($waiver),
+            'signatures' => array_fill(0, $riders, [
+                'signer_name' => 'Test Parent',
+                'relationship_to_rider' => 'parent',
+                'accepted' => true,
+                'authorized' => true,
+            ]),
+        ];
     }
 
     protected function insertBooking(string $id, string $start, string $end, string $status = 'confirmed', array $horses = ['test-h1']): void

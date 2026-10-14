@@ -7,6 +7,7 @@ use App\Models\BusinessConfig;
 use App\Models\LessonType;
 use App\Services\AvailabilityService;
 use App\Services\BookingService;
+use App\Services\WaiverService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,14 @@ class PublicController extends Controller
     public function lessonTypes(): JsonResponse
     {
         return response()->json(LessonType::query()->where('active', true)->orderBy('id')->get());
+    }
+
+    public function waiver(): JsonResponse
+    {
+        $waiver = WaiverService::current();
+        abort_unless($waiver, 404, 'No current waiver is available. Please contact Rylie before booking.');
+
+        return response()->json(WaiverService::document($waiver))->header('Cache-Control', 'no-store');
     }
 
     public function config(): JsonResponse
@@ -36,7 +45,7 @@ class PublicController extends Controller
 
     public function createGuestBooking(StoreGuestBookingRequest $request, BookingService $bookings): JsonResponse
     {
-        $result = $bookings->createGuestBooking($request->validated(), $request->user());
+        $result = $bookings->createGuestBooking($request->validated(), $request->user(), ['ip_address' => $request->ip(), 'user_agent' => $request->userAgent()]);
 
         return response()->json([
             'success' => true,

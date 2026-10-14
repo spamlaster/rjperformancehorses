@@ -6,8 +6,10 @@
  */
 
 import { api } from '@/lib/api'
+import type { BookingWaiver } from '@/services/waiverService'
 
 export interface GuestBookingPayload {
+  waiver: BookingWaiver
   lessonTypeId: string
   startTime: string // ISO 8601 datetime
   endTime: string   // ISO 8601 datetime
@@ -51,6 +53,7 @@ export interface GuestBookingResult {
 export async function createGuestBooking(payload: GuestBookingPayload): Promise<GuestBookingResult> {
   try {
     const { data, error } = await api<{ success: boolean; booking_id: string; customer_id: string; recurring_lesson_id: string; management_token: string; message: string }>('POST', '/bookings/guest', {
+      waiver: payload.waiver,
       lesson_type_id: payload.lessonTypeId,
       start_time: payload.startTime,
       end_time: payload.endTime,

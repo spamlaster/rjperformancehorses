@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('throttle:public')->group(function () {
     Route::get('/lesson-types', [PublicController::class, 'lessonTypes']);
     Route::get('/config', [PublicController::class, 'config']);
+    Route::get('/waiver', [PublicController::class, 'waiver']);
     Route::get('/availability/slots', [PublicController::class, 'slots']);
 });
 Route::post('/bookings/guest', [PublicController::class, 'createGuestBooking'])->middleware('throttle:guest-booking');
@@ -45,6 +46,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::apiResource('customers', Admin\CustomerController::class)->only('index', 'store', 'update');
     Route::apiResource('riders', Admin\RiderController::class)->except('show');
     Route::get('/bookings', [Admin\BookingController::class, 'index']);
+    Route::get('/bookings/{booking}/waivers', [Admin\WaiverController::class, 'booking']);
+    Route::get('/recurring-lessons/{recurringLesson}/waivers', [Admin\WaiverController::class, 'recurring']);
     Route::post('/bookings/{booking}/cancel', [Admin\BookingController::class, 'cancel']);
     Route::apiResource('instructor-availability', Admin\InstructorAvailabilityController::class)
         ->except('show')->parameters(['instructor-availability' => 'instructorAvailability']);

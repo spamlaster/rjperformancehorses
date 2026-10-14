@@ -107,6 +107,7 @@ export interface Booking {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
+  waiverCount?: number;
   riderNames?: string[]; // From booking_riders (admin reads only)
 }
 

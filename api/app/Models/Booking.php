@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Booking extends Model
 {
@@ -18,6 +19,11 @@ class Booking extends Model
             'version' => 'integer',
             'deleted_at' => 'datetime',
         ];
+    }
+
+    public function waiverAcceptances(): HasMany
+    {
+        return $this->hasMany(WaiverAcceptance::class);
     }
 
     public function customer(): BelongsTo

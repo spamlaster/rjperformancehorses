@@ -23,6 +23,12 @@ const runtime = []
 const date = '2099-01-07' // Wednesday, the customer's example.
 const nextWeek = '2099-01-14'
 const base = 'http://127.0.0.1:5197'
+async function waiverPayload() {
+  const document = await (await fetch(`${base}/api/waiver`)).json()
+  return { id: document.id, document_hash: document.document_hash, signatures: [{
+    signer_name: 'Browser Test Signer', relationship_to_rider: 'parent', accepted: true, authorized: true,
+  }] }
+}
 const slots = async (day) => (await fetch(`${base}/api/availability/slots?lesson_type_id=lesson-1&date=${day}`)).json()
 try {
   // This database name is fixed and dedicated to this test; never use the app's DB_DATABASE.
@@ -42,6 +48,15 @@ try {
   const page = await browser.newPage()
   page.on('pageerror', error => runtime.push(error.message))
   page.on('dialog', dialog => dialog.accept())
+  async function signWaiver(relationship = 'self') {
+    const section = page.getByRole('region', { name: 'Booking waiver', exact: true })
+    await section.locator('fieldset').first().waitFor()
+    assert(await page.getByRole('button', { name: 'Reserve Weekly Lesson', exact: true }).isDisabled(), 'booking requires a signed waiver')
+    await section.getByLabel('I am signing as', { exact: true }).selectOption(relationship)
+    await section.getByLabel('Type your full name to sign', { exact: true }).fill('Browser Test Signer')
+    await section.getByRole('checkbox', { name: /I confirm I am at least 18/ }).check()
+    await section.getByRole('checkbox', { name: /I have read and agree to this waiver/ }).check()
+  }
 
   await page.goto(`${base}/book`)
   await page.getByRole('button', { name: /Walk & Trot/ }).click()
@@ -55,6 +70,7 @@ try {
   await page.getByLabel('I am the rider').check()
   await page.locator('input[type=date]').nth(1).fill('1990-01-01')
   await page.getByRole('button', { name: 'Next', exact: true }).click()
+  await signWaiver()
   await page.getByRole('button', { name: 'Reserve Weekly Lesson' }).click()
   await page.getByText('Your Weekly Lesson Is Reserved!').waitFor()
   const link = await page.locator('#management-link').inputValue()
@@ -80,6 +96,7 @@ try {
   console.log('PASS: customer cancellation persists and releases future Wednesdays')
 
   const response = await page.request.post(`${base}/api/bookings/guest`, { data: {
+    waiver: await waiverPayload(),
     lesson_type_id: 'lesson-1', start_time: `${nextWeek}T17:00:00`, end_time: `${nextWeek}T17:30:00`,
     customer: { first_name: 'Replacement', last_name: 'Customer', email: 'replacement@example.com' },
     riders: [{ first_name: 'Replacement', last_name: 'Customer', date_of_birth: '1990-01-01' }],
@@ -110,6 +127,12 @@ try {
   console.log('PASS: dashboard calendar shows day details, skips, and reservations beyond eight weeks on desktop and mobile')
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto(`${base}/admin/bookings`)
+  await page.getByRole('button', { name: /View Signed Waivers/ }).first().click()
+  const signedDialog = page.getByRole('dialog', { name: 'Signed Waivers', exact: true })
+  await signedDialog.getByText('Signed by Browser Test Signer', { exact: false }).waitFor()
+  await signedDialog.getByText('Riding Waiver and Release of Liability', { exact: false }).waitFor()
+  await signedDialog.getByRole('button', { name: 'Close', exact: true }).click()
+  console.log('PASS: booking requires the waiver and Rylie can review the saved signature and exact waiver text')
   const row = page.locator('div.border-b').filter({ hasText: 'Replacement Customer' })
   await row.getByRole('button', { name: 'Cancel Weekly Reservation' }).click()
   await page.getByText('Reservation cancelled. The time is available again.').waitFor()
@@ -174,6 +197,7 @@ try {
   assert.equal(await page.getByPlaceholder('john@example.com').inputValue(), 'rider-portal@example.com')
   await page.getByLabel('Choose a saved rider', { exact: true }).selectOption({ label: 'Emma Smith' })
   await page.getByRole('button', { name: 'Next', exact: true }).click()
+  await signWaiver('parent')
   await page.getByRole('button', { name: 'Reserve Weekly Lesson', exact: true }).click()
   await page.getByText('Your Weekly Lesson Is Reserved!', { exact: true }).waitFor()
   await page.goto(`${base}/rider`)

@@ -226,7 +226,7 @@
 
       <!-- Step 3: Review -->
       <div v-show="currentStep === 3">
-        <h2 class="text-2xl font-serif font-bold mb-6">Review Your Booking</h2>
+        <h2 class="text-2xl font-serif font-bold mb-6">Review & Sign Waiver</h2>
 
         <p class="mb-4 text-light-brown">This reserves the same day and time every week, starting on the date below, until you cancel. You can skip individual weeks without giving up your standing time.</p>
         <div class="space-y-6">
@@ -276,6 +276,45 @@
               </div>
             </div>
           </div>
+
+          <section aria-label="Booking waiver" class="border border-border-light rounded-lg p-4 space-y-4">
+            <h3 class="text-xl font-serif font-bold">Riding Waiver & Electronic Signature</h3>
+            <p v-if="waiverLoading" role="status">Loading the waiver…</p>
+            <div v-else-if="waiverError" role="alert">
+              <p class="text-red-700">{{ waiverError }}</p>
+              <button class="btn-secondary mt-2" @click="loadWaiver">Try loading the waiver again</button>
+            </div>
+            <template v-else-if="waiverDocument">
+              <h4 class="font-bold">{{ waiverDocument.title }} · Version {{ waiverDocument.version }}</h4>
+              <div class="max-h-72 overflow-y-auto border border-border-light rounded p-4 bg-gray-50 whitespace-pre-wrap text-sm leading-relaxed" tabindex="0" aria-label="Waiver text">{{ waiverDocument.content }}</div>
+              <p class="text-sm text-light-brown">Read the waiver and sign for each rider below. Riders under 18 need a parent or legal guardian to sign.</p>
+              <fieldset v-for="(signature, index) in waiverSignatures" :key="index" class="border border-border-light rounded-lg p-4 space-y-3">
+                <legend class="font-bold px-1">Waiver for {{ riderName(index) }}</legend>
+                <div>
+                  <label :for="`waiver-capacity-${index}`" class="form-label">I am signing as</label>
+                  <select :id="`waiver-capacity-${index}`" v-model="signature.relationship_to_rider" class="form-select" @change="signature.accepted = false; signature.authorized = false">
+                    <option value="">Choose your relationship</option>
+                    <option v-if="!isMinor(index)" value="self">The rider (18 or older)</option>
+                    <option value="parent">Parent</option>
+                    <option value="legal_guardian">Legal guardian</option>
+                  </select>
+                </div>
+                <div>
+                  <label :for="`waiver-name-${index}`" class="form-label">Type your full name to sign</label>
+                  <input :id="`waiver-name-${index}`" v-model="signature.signer_name" type="text" autocomplete="name" maxlength="255" class="form-input" @input="signature.accepted = false; signature.authorized = false" />
+                </div>
+                <label class="flex items-start gap-3 text-sm">
+                  <input v-model="signature.authorized" type="checkbox" class="mt-1" />
+                  <span>I confirm I am at least 18 and have authority to sign for {{ riderName(index) }}.</span>
+                </label>
+                <label class="flex items-start gap-3 text-sm">
+                  <input v-model="signature.accepted" type="checkbox" class="mt-1" />
+                  <span>I have read and agree to this waiver for {{ riderName(index) }}. I intend my typed name to serve as my electronic signature.</span>
+                </label>
+              </fieldset>
+              <button class="text-sm underline" @click="loadWaiver">Refresh waiver</button>
+            </template>
+          </section>
 
           <button @click="bookingStore.setStep(2)" class="text-accent-gold hover:text-dark-brown font-semibold text-sm">
             ← Edit Information
@@ -363,7 +402,7 @@
         <button
           v-if="currentStep === 3"
           @click="submitBooking"
-          :disabled="submittingBooking"
+          :disabled="submittingBooking || !waiverReady"
           class="btn-primary"
         >
           {{ submittingBooking ? 'Booking...' : 'Reserve Weekly Lesson' }}
@@ -384,6 +423,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
+import { fetchCurrentWaiver, type WaiverDocument, type WaiverSignature } from '@/services/waiverService'
 import { loadRiderAccount, type RiderAccount } from '@/services/riderAccountService'
 import { useBookingStore } from '@/stores/bookingStore'
 import { fetchLessonTypes, fetchBusinessTimezone } from '@/services/apiService'
@@ -394,6 +434,38 @@ import { format, parseISO } from 'date-fns'
 
 const bookingStore = useBookingStore()
 const savedAccount = ref<RiderAccount | null>(null)
+const waiverDocument = ref<WaiverDocument | null>(null)
+const waiverSignatures = ref<WaiverSignature[]>([])
+const waiverLoading = ref(false)
+const waiverError = ref('')
+const waiverReady = computed(() => !!waiverDocument.value && !waiverLoading.value && !waiverError.value
+  && waiverSignatures.value.length === riders.value.length
+  && waiverSignatures.value.every(s => s.signer_name.trim().length >= 2 && s.relationship_to_rider && s.accepted && s.authorized))
+function clearSignatures() {
+  waiverSignatures.value = riders.value.map(() => ({ signer_name: '', relationship_to_rider: '', accepted: false, authorized: false }))
+}
+async function loadWaiver() {
+  waiverLoading.value = true
+  waiverError.value = ''
+  waiverDocument.value = null
+  clearSignatures()
+  try {
+    waiverDocument.value = await fetchCurrentWaiver()
+  } catch (err) {
+    waiverError.value = err instanceof Error ? err.message : 'Unable to load the waiver.'
+  } finally {
+    waiverLoading.value = false
+  }
+}
+function isMinor(index: number) {
+  const birthday = riders.value[index]?.dateOfBirth
+  if (!birthday || !waiverDocument.value) return false
+  const today = parseISO(waiverDocument.value.current_date)
+  const birth = parseISO(birthday)
+  let age = today.getFullYear() - birth.getFullYear()
+  if (today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age--
+  return age < 18
+}
 const lessonTypes = ref<LessonType[]>([])
 const businessTimezone = ref('')
 const slots = ref<BookableSlot[]>([])
@@ -443,6 +515,10 @@ async function loadSlots() {
 }
 
 async function submitBooking() {
+  if (!waiverReady.value || !waiverDocument.value) {
+    bookingError.value = 'Read and sign the waiver for every rider before booking.'
+    return
+  }
   submittingBooking.value = true
   bookingError.value = ''
 
@@ -479,6 +555,7 @@ async function submitBooking() {
     })
 
     const result = await createGuestBooking({
+      waiver: { id: waiverDocument.value.id, document_hash: waiverDocument.value.document_hash, signatures: waiverSignatures.value },
       lessonTypeId: selectedLessonType.value?.id || '',
       startTime,
       endTime,
@@ -518,6 +595,7 @@ async function copyManagementLink() {
 
 function resetAndStartOver() {
   bookingStore.resetWizard()
+  clearSignatures()
   bookingSuccess.value = false
   managementLink.value = ''
   copyNotice.value = ''
@@ -579,6 +657,9 @@ function riderName(index: number): string {
     : `${rider.firstName} ${rider.lastName}`
 }
 
+watch(() => JSON.stringify({ riders: riders.value, contact: customerInfo.value }), clearSignatures, { immediate: true })
+watch(currentStep, step => { if (step === 3) void loadWaiver() })
+
 watch([() => selectedLessonType.value?.id, selectedDate], loadSlots, { immediate: true, flush: 'sync' })
 
 onMounted(async () => {
@@ -611,5 +692,5 @@ onMounted(async () => {
 const selectLesson = (lesson: LessonType) => bookingStore.setLessonType(lesson)
 const nextStep = () => bookingStore.nextStep()
 const prevStep = () => bookingStore.prevStep()
-const getStepLabel = (index: number) => ['Lesson Type', 'Date & Time', 'Contact Info', 'Review', 'Confirmation'][index] || ''
+const getStepLabel = (index: number) => ['Lesson Type', 'Date & Time', 'Contact Info', 'Review & Waiver', 'Confirmation'][index] || ''
 </script>
