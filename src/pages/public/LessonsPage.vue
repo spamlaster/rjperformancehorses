@@ -74,24 +74,13 @@
               <router-link to="/book" class="btn-primary text-sm">Book Lesson</router-link>
             </div>
 
-            <div class="card card-padding">
-              <h3 class="font-serif text-xl font-bold mb-2">Group Lesson (90 min)</h3>
-              <p class="text-light-brown mb-4 text-sm">
-                Extended group lesson with more time for instruction and practice.
-              </p>
-              <div class="mb-4">
-                <p class="text-2xl font-bold text-accent-gold">$120</p>
-                <p class="text-sm text-light-brown">90 minutes • 2 riders</p>
-              </div>
-              <router-link to="/book" class="btn-primary text-sm">Book Lesson</router-link>
-            </div>
           </div>
         </div>
 
         <!-- Barrel & Pole -->
         <div>
           <h2 class="text-3xl font-serif font-bold text-text-dark mb-8">Barrel & Pole Training</h2>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div class="card card-padding">
               <h3 class="font-serif text-xl font-bold mb-2">Barrel Racing (60 min)</h3>
               <p class="text-light-brown mb-4 text-sm">
@@ -116,17 +105,6 @@
               <router-link to="/book" class="btn-primary text-sm">Book Lesson</router-link>
             </div>
 
-            <div class="card card-padding">
-              <h3 class="font-serif text-xl font-bold mb-2">Weekly Package</h3>
-              <p class="text-light-brown mb-4 text-sm">
-                Two 60-minute barrel racing lessons per week for committed riders.
-              </p>
-              <div class="mb-4">
-                <p class="text-2xl font-bold text-accent-gold">$130<span class="text-sm">/week</span></p>
-                <p class="text-sm text-light-brown">2x 60 min • 1 rider</p>
-              </div>
-              <router-link to="/book" class="btn-primary text-sm">Book Lesson</router-link>
-            </div>
           </div>
         </div>
       </div>

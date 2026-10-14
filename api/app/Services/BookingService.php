@@ -9,6 +9,7 @@ use App\Models\BookingRider;
 use App\Models\BusinessConfig;
 use App\Models\Customer;
 use App\Models\LessonType;
+use App\Models\RecurringLesson;
 use App\Models\Rider;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,7 @@ class BookingService
 
     /**
      * @param  array{lesson_type_id:string,start_time:string,end_time:string,customer:array,riders:list<array>}  $data
-     * @return array{booking_id:string,customer_id:string}
+     * @return array{booking_id:string,customer_id:string,recurring_lesson_id:string,management_token:string}
      *
      * @throws SlotUnavailableException
      */
@@ -49,7 +50,7 @@ class BookingService
                 throw new SlotUnavailableException;
             }
 
-            $horseIds = HorseAvailability::for($lesson->id, $start, $end);
+            $horseIds = HorseAvailability::forWeekly($lesson->id, $start, $end);
             if (count($horseIds) < $lesson->required_horse_count) {
                 throw new SlotUnavailableException;
             }
@@ -68,6 +69,22 @@ class BookingService
                 $riderIds[] = $this->matchOrCreateRider($customer, $input)->id;
             }
 
+            $token = bin2hex(random_bytes(32));
+            $reservation = RecurringLesson::create([
+                'customer_id' => $customer->id,
+                'rider_id' => $riderIds[0],
+                'lesson_type_id' => $lesson->id,
+                'horse_id' => $horseIds[0],
+                'day_of_week' => CarbonImmutable::parse($start, 'UTC')->dayOfWeek,
+                'start_time' => substr($start, 11),
+                'duration_minutes' => $lesson->duration_minutes,
+                'starts_on' => $date,
+                'status' => 'active',
+                'management_token_hash' => hash('sha256', $token),
+            ]);
+            $reservation->horses()->attach(array_slice($horseIds, 0, $lesson->required_horse_count));
+            $reservation->riders()->attach(array_unique($riderIds));
+
             // bookings.horse_id is for admin display only; booking_horses is authoritative.
             $booking = Booking::create([
                 'customer_id' => $customer->id,
@@ -76,7 +93,8 @@ class BookingService
                 'start_time' => $start,
                 'end_time' => $end,
                 'status' => 'pending',
-                'booking_type' => 'regular',
+                'booking_type' => 'recurring',
+                'recurring_lesson_id' => $reservation->id,
             ]);
 
             foreach (array_slice($horseIds, 0, $lesson->required_horse_count) as $horseId) {
@@ -86,7 +104,12 @@ class BookingService
                 BookingRider::create(['booking_id' => $booking->id, 'rider_id' => $riderId]);
             }
 
-            return ['booking_id' => $booking->id, 'customer_id' => $customer->id];
+            return [
+                'booking_id' => $booking->id,
+                'customer_id' => $customer->id,
+                'recurring_lesson_id' => $reservation->id,
+                'management_token' => $token,
+            ];
         });
     }
 

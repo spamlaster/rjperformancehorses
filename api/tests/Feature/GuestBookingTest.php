@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Exceptions\SlotUnavailableException;
+use App\Models\RecurringLesson;
 use App\Services\AvailabilityService;
 use App\Services\HorseAvailability;
+use App\Services\RecurringLessonService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\Concerns\BuildsSchedule;
@@ -60,6 +62,7 @@ class GuestBookingTest extends TestCase
             $this->assertSame('The requested time is no longer available', $e->getMessage());
         }
 
+        app(RecurringLessonService::class)->cancel(RecurringLesson::findOrFail($one['recurring_lesson_id']));
         foreach (['cancelled' => '64', 'completed' => '65'] as $status => $case) {
             DB::table('bookings')->where('id', $one['booking_id'])->update(['status' => $status]);
             $this->assertCount(3, HorseAvailability::for('test-lesson', "{$this->date} 09:00:00", "{$this->date} 10:00:00"), "{$case} {$status} booking releases horse");

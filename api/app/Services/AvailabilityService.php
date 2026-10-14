@@ -25,7 +25,7 @@ class AvailabilityService
     public const SLOT_INTERVAL_MINUTES = 30;
 
     /** @return list<array{start_time:string,end_time:string,available:bool}> */
-    public function bookableSlots(string $lessonTypeId, string $date): array
+    public function bookableSlots(string $lessonTypeId, string $date, bool $weekly = true): array
     {
         $timezone = BusinessConfig::timezone();
         $lesson = LessonType::query()->whereKey($lessonTypeId)
@@ -61,8 +61,11 @@ class AvailabilityService
             ->whereIn('status', Booking::ACTIVE_STATUSES)->whereNull('deleted_at')
             ->where('start_time', '<', $rangeEnd)->where('end_time', '>', $rangeStart)
             ->get(['start_time', 'end_time'])->map(fn ($b) => [$b->start_time, $b->end_time])->all();
-        $horses = HorseAvailability::load($lessonTypeId, $date, $rangeStart, $rangeEnd);
-        $now = time();
+        $recurring = $weekly
+            ? RecurringLessonService::weeklyInstructorConflicts($date)
+            : RecurringLessonService::instructorConflicts($date);
+        $horses = HorseAvailability::load($lessonTypeId, $date, $rangeStart, $rangeEnd, $weekly);
+        $now = CarbonImmutable::now()->timestamp;
 
         $slots = [];
         foreach ($candidates as $start => $startAt) {
@@ -75,6 +78,7 @@ class AvailabilityService
                 || $endTs - $startTs !== $duration * 60
                 || HorseAvailability::overlapsAny($instructorBlocks, $start, $end)
                 || HorseAvailability::overlapsAny($bookings, $start, $end)
+                || HorseAvailability::overlapsAny($recurring, $start, $end)
                 || count($horses->freeHorseIds($start, $end)) < $lesson->required_horse_count) {
                 continue;
             }

@@ -126,7 +126,7 @@ const upcomingBookings = computed(() => {
 
 const todayBookings = computed(() => {
   return adminStore.bookings.filter(b =>
-    isToday(parseISO(b.startTime))
+    b.status !== 'cancelled' && isToday(parseISO(b.startTime))
   ).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 })
 

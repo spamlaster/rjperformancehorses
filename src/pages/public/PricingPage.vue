@@ -56,13 +56,6 @@
                 </div>
                 <p class="text-sm text-light-brown">1 rider</p>
               </div>
-              <div class="pb-4">
-                <div class="flex justify-between items-start mb-2">
-                  <h4 class="font-bold">Weekly Package</h4>
-                  <span class="text-accent-gold font-bold text-lg">$130</span>
-                </div>
-                <p class="text-sm text-light-brown">2x 60 min per week</p>
-              </div>
             </div>
           </div>
         </div>

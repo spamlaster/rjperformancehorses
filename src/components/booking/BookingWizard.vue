@@ -39,6 +39,7 @@
       <!-- Step 0: Lesson Type -->
       <div v-show="currentStep === 0">
         <h2 class="text-2xl font-serif font-bold mb-4">Select a Lesson</h2>
+        <p class="text-light-brown mb-4">Reserve a weekly lesson. Your day and time stay yours until you cancel.</p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <button
             v-for="lesson in lessonTypes"
@@ -72,7 +73,7 @@
         </div>
         <div class="grid grid-cols-1 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-4">
           <div>
-            <label class="form-label">Date</label>
+            <label class="form-label">First session date</label>
             <input
               v-model="selectedDate"
               type="date"
@@ -219,6 +220,7 @@
       <div v-show="currentStep === 3">
         <h2 class="text-2xl font-serif font-bold mb-6">Review Your Booking</h2>
 
+        <p class="mb-4 text-light-brown">This reserves the same day and time every week, starting on the date below, until you cancel. You can skip individual weeks without giving up your standing time.</p>
         <div class="space-y-6">
           <!-- Lesson Details -->
           <div class="p-4 border border-border-light rounded-lg">
@@ -229,7 +231,7 @@
                 <p class="font-semibold">{{ selectedLessonType?.name }}</p>
               </div>
               <div>
-                <span class="text-light-brown">Price:</span>
+                <span class="text-light-brown">Price per session:</span>
                 <p class="font-semibold">${{ selectedLessonType?.price }}</p>
               </div>
               <div>
@@ -278,10 +280,10 @@
         <div v-if="bookingSuccess" class="text-center py-8">
           <div class="text-5xl mb-4">✓</div>
           <h2 class="text-3xl font-serif font-bold text-green-600 mb-4">
-            Your Lesson Has Been Booked!
+            Your Weekly Lesson Is Reserved!
           </h2>
           <p class="text-light-brown mb-6">
-            A confirmation will be sent to {{ customerInfo.email }}
+            Your day and time are reserved every week until you cancel.
           </p>
 
           <div class="bg-gray-50 p-6 rounded-lg mb-6 text-left max-w-md mx-auto">
@@ -300,6 +302,16 @@
                 <span class="text-light-brown">Booking ID:</span> {{ createdBookingId }}
               </div>
             </div>
+          </div>
+
+          <div v-if="managementLink" class="max-w-md mx-auto text-left mb-6">
+            <h3 class="font-bold mb-2">Manage your weekly reservation</h3>
+            <p class="text-sm text-light-brown mb-3">Save this private link to skip a week or cancel all future sessions. Anyone with this link can manage your reservation.</p>
+            <a :href="managementLink" class="btn-primary inline-block mb-3">Manage Weekly Reservation</a>
+            <label for="management-link" class="form-label">Your private management link</label>
+            <input id="management-link" :value="managementLink" readonly class="form-input text-sm" @focus="($event.target as HTMLInputElement).select()" />
+            <button class="btn-secondary mt-3 text-sm" @click="copyManagementLink">Copy Link</button>
+            <p v-if="copyNotice" role="status" class="mt-2 text-sm">{{ copyNotice }}</p>
           </div>
 
           <button
@@ -346,7 +358,7 @@
           :disabled="submittingBooking"
           class="btn-primary"
         >
-          {{ submittingBooking ? 'Booking...' : 'Book Lesson' }}
+          {{ submittingBooking ? 'Booking...' : 'Reserve Weekly Lesson' }}
         </button>
         <button
           v-else-if="!isLastStep"
@@ -380,6 +392,8 @@ const availabilityError = ref('')
 const submittingBooking = ref(false)
 const bookingSuccess = ref(false)
 const bookingError = ref('')
+const managementLink = ref('')
+const copyNotice = ref('')
 let requestId = 0
 
 const currentStep = computed(() => bookingStore.currentStep)
@@ -467,6 +481,7 @@ async function submitBooking() {
     })
 
     if (result.success && result.bookingId) {
+      managementLink.value = result.managementToken ? `${window.location.origin}/reservation#${result.managementToken}` : ''
       bookingStore.setBookingConfirmed(result.bookingId)
       bookingSuccess.value = true
       bookingStore.setStep(4)
@@ -481,9 +496,20 @@ async function submitBooking() {
   }
 }
 
+async function copyManagementLink() {
+  try {
+    await navigator.clipboard.writeText(managementLink.value)
+    copyNotice.value = 'Link copied. Save it somewhere you can find later.'
+  } catch {
+    copyNotice.value = 'Select and copy your private link from the field above.'
+  }
+}
+
 function resetAndStartOver() {
   bookingStore.resetWizard()
   bookingSuccess.value = false
+  managementLink.value = ''
+  copyNotice.value = ''
   bookingError.value = ''
 }
 
@@ -544,6 +570,7 @@ onMounted(async () => {
     || availableLessons.find(lesson => lesson.name === 'Barrel Racing')
     || availableLessons.find(lesson => lesson.name === 'Pole Bending')
   lessonTypes.value = availableLessons
+    .filter(lesson => !['Weekly Barrel Training', 'Extended Group Lesson'].includes(lesson.name))
     .filter(lesson => !['Barrel Racing', 'Pole Bending', 'Barrel Racing & Pole Bending'].includes(lesson.name) || lesson === combinedLesson)
     .map(lesson => lesson === combinedLesson ? {
       ...lesson,

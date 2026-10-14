@@ -13,6 +13,7 @@
     "db:reset": "cd api && php artisan migrate:fresh --seed",
     "test:api": "cd api && php artisan test",
     "test:browser": "node tests/browser.mjs",
+    "test:weekly": "node tests/weekly-browser.mjs",
     "test:admin": "node tests/admin-browser.mjs",
     "test:riders": "node tests/riders-browser.mjs",
     "test": "npm run test:api && npm run test:browser && npm run test:admin && npm run test:riders"

@@ -42,6 +42,6 @@ class PublicController extends Controller
             'success' => true,
             ...$result,
             'message' => 'Booking created successfully',
-        ], 201);
+        ], 201)->header('Cache-Control', 'no-store');
     }
 }

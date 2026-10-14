@@ -213,6 +213,7 @@ export const useAdminStore = defineStore('admin', () => {
     futureDate.setDate(today.getDate() + days)
 
     return bookings.value.filter(b => {
+      if (!['pending', 'confirmed'].includes(b.status)) return false
       const bookingDate = new Date(b.startTime)
       return bookingDate >= today && bookingDate <= futureDate
     })

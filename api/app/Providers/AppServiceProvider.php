@@ -26,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
         // so browsing dates would use up the booking allowance.
         RateLimiter::for('public', fn (Request $request) => Limit::perMinute(120)->by($request->ip()));
         RateLimiter::for('guest-booking', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
+        RateLimiter::for('reservation-management', fn (Request $request) => Limit::perMinute(30)->by($request->ip()));
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(10)->by(strtolower((string) $request->input('email')).'|'.$request->ip()));
     }
 }

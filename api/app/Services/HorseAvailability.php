@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -36,7 +37,7 @@ final class HorseAvailability
      * Load everything needed to answer freeHorseIds() for lessons starting on
      * $date and overlapping [$rangeStart, $rangeEnd).
      */
-    public static function load(string $lessonTypeId, string $date, string $rangeStart, string $rangeEnd): self
+    public static function load(string $lessonTypeId, string $date, string $rangeStart, string $rangeEnd, bool $weekly = false): self
     {
         $dayOfWeek = (int) date('w', strtotime($date));
 
@@ -60,7 +61,11 @@ final class HorseAvailability
         }
 
         $blocks = [];
-        foreach (DB::table('blocked_times')->whereIn('horse_id', $horseIds)->where('date', $date)->get() as $b) {
+        foreach (DB::table('blocked_times')->whereIn('horse_id', $horseIds)
+            ->where('date', $weekly ? '>=' : '=', $date)->get() as $b) {
+            if ($weekly && CarbonImmutable::parse($b->date, 'UTC')->dayOfWeek !== $dayOfWeek) {
+                continue;
+            }
             $blocks[$b->horse_id][] = [$at($b->start_time), $at($b->end_time)];
         }
 
@@ -76,6 +81,24 @@ final class HorseAvailability
             $bookings[$b->horse_id][] = [$b->start_time, $b->end_time];
         }
 
+        $reservations = RecurringLessonService::activeOnWeekday($dayOfWeek)
+            ->when(! $weekly, fn ($q) => $q
+                ->where(fn ($q) => $q->whereNull('starts_on')->orWhere('starts_on', '<=', $date))
+                ->whereNotExists(fn ($q) => $q->from('recurring_lesson_skips')
+                    ->whereColumn('recurring_lesson_id', 'recurring_lessons.id')->where('date', $date)))
+            ->with('horses')->get();
+        foreach ($reservations as $reservation) {
+            $from = "{$date} {$reservation->start_time}";
+            $to = CarbonImmutable::parse($from, 'UTC')->addMinutes($reservation->duration_minutes)->format('Y-m-d H:i:s');
+            $reservedIds = $reservation->horses->pluck('id')->all();
+            if (! $reservedIds && $reservation->horse_id) {
+                $reservedIds = [$reservation->horse_id];
+            }
+            foreach ($reservedIds as $horseId) {
+                $bookings[$horseId][] = [$from, $to];
+            }
+        }
+
         return new self($date, $horseIds, $windows, $blocks, $bookings);
     }
 
@@ -83,6 +106,12 @@ final class HorseAvailability
     public static function for(string $lessonTypeId, string $start, string $end): array
     {
         return self::load($lessonTypeId, substr($start, 0, 10), $start, $end)->freeHorseIds($start, $end);
+    }
+
+    /** Horses available for the standing weekly reservation, including future dated horse blocks. */
+    public static function forWeekly(string $lessonTypeId, string $start, string $end): array
+    {
+        return self::load($lessonTypeId, substr($start, 0, 10), $start, $end, true)->freeHorseIds($start, $end);
     }
 
     /** @return list<string> */

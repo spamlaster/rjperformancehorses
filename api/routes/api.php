@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\GuestReservationController;
 use App\Http\Controllers\PublicController;
 use Illuminate\Support\Facades\Route;
 
@@ -12,6 +13,12 @@ Route::middleware('throttle:public')->group(function () {
     Route::get('/availability/slots', [PublicController::class, 'slots']);
 });
 Route::post('/bookings/guest', [PublicController::class, 'createGuestBooking'])->middleware('throttle:guest-booking');
+
+Route::middleware('throttle:reservation-management')->group(function () {
+    Route::post('/reservations/manage', [GuestReservationController::class, 'show']);
+    Route::post('/reservations/cancel', [GuestReservationController::class, 'cancel']);
+    Route::post('/reservations/skip', [GuestReservationController::class, 'skip']);
+});
 
 // Admin session auth (Sanctum SPA cookies; CSRF cookie at /api/sanctum/csrf-cookie).
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
@@ -28,6 +35,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::apiResource('customers', Admin\CustomerController::class)->only('index', 'store', 'update');
     Route::apiResource('riders', Admin\RiderController::class)->except('show');
     Route::get('/bookings', [Admin\BookingController::class, 'index']);
+    Route::post('/bookings/{booking}/cancel', [Admin\BookingController::class, 'cancel']);
     Route::apiResource('instructor-availability', Admin\InstructorAvailabilityController::class)
         ->except('show')->parameters(['instructor-availability' => 'instructorAvailability']);
     Route::apiResource('horse-availability', Admin\HorseAvailabilityController::class)
@@ -35,5 +43,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::apiResource('blocked-times', Admin\BlockedTimeController::class)
         ->only('index', 'store', 'destroy')->parameters(['blocked-times' => 'blockedTime']);
     Route::get('/recurring-lessons', [Admin\RecurringLessonController::class, 'index']);
+    Route::post('/recurring-lessons/{recurringLesson}/cancel', [Admin\RecurringLessonController::class, 'cancel']);
     Route::patch('/config', [Admin\ConfigController::class, 'update']);
 });

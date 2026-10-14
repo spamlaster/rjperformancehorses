@@ -28,6 +28,8 @@ export interface GuestBookingResult {
   success: boolean
   bookingId?: string
   customerId?: string
+  recurringLessonId?: string
+  managementToken?: string
   error?: string
   message?: string
 }
@@ -47,7 +49,7 @@ export interface GuestBookingResult {
  */
 export async function createGuestBooking(payload: GuestBookingPayload): Promise<GuestBookingResult> {
   try {
-    const { data, error } = await api<{ success: boolean; booking_id: string; customer_id: string; message: string }>('POST', '/bookings/guest', {
+    const { data, error } = await api<{ success: boolean; booking_id: string; customer_id: string; recurring_lesson_id: string; management_token: string; message: string }>('POST', '/bookings/guest', {
       lesson_type_id: payload.lessonTypeId,
       start_time: payload.startTime,
       end_time: payload.endTime,
@@ -76,6 +78,8 @@ export async function createGuestBooking(payload: GuestBookingPayload): Promise<
       success: data.success,
       bookingId: data.booking_id,
       customerId: data.customer_id,
+      recurringLessonId: data.recurring_lesson_id,
+      managementToken: data.management_token,
       message: data.message,
     }
   } catch (err) {

@@ -10,6 +10,7 @@ import PricingPage from '@/pages/public/PricingPage.vue'
 import FAQPage from '@/pages/public/FAQPage.vue'
 import ContactPage from '@/pages/public/ContactPage.vue'
 import BookingWizardPage from '@/pages/public/BookingWizardPage.vue'
+import ReservationPage from '@/pages/public/ReservationPage.vue'
 
 // Admin pages
 import LoginPage from '@/pages/admin/LoginPage.vue'
@@ -54,6 +55,11 @@ const routes: RouteRecordRaw[] = [
     path: '/book',
     name: 'Booking',
     component: BookingWizardPage,
+  },
+  {
+    path: '/reservation',
+    name: 'Reservation',
+    component: ReservationPage,
   },
   {
     path: '/admin',
