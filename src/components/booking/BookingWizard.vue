@@ -538,7 +538,18 @@ watch([() => selectedLessonType.value?.id, selectedDate], loadSlots, { immediate
 
 onMounted(async () => {
   bookingStore.setStep(0)
-  lessonTypes.value = await fetchLessonTypes(true)
+  const availableLessons = await fetchLessonTypes(true)
+  // Keep the existing lesson ID for availability and booking requests.
+  const combinedLesson = availableLessons.find(lesson => lesson.name === 'Barrel Racing & Pole Bending')
+    || availableLessons.find(lesson => lesson.name === 'Barrel Racing')
+    || availableLessons.find(lesson => lesson.name === 'Pole Bending')
+  lessonTypes.value = availableLessons
+    .filter(lesson => !['Barrel Racing', 'Pole Bending', 'Barrel Racing & Pole Bending'].includes(lesson.name) || lesson === combinedLesson)
+    .map(lesson => lesson === combinedLesson ? {
+      ...lesson,
+      name: 'Barrel Racing & Pole Bending',
+      description: 'Specialized training in barrel racing, pole bending patterns, and speed control.',
+    } : lesson)
   businessTimezone.value = (await fetchBusinessTimezone()) || 'business local time'
 })
 
