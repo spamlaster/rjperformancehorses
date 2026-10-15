@@ -32,23 +32,24 @@
       <label :for="`session-horse-${index}`" class="form-label">Horse {{ form.horse_ids.length > 1 ? index + 1 : '' }}</label>
       <select :id="`session-horse-${index}`" v-model="form.horse_ids[index]" class="form-select" required>
         <option value="" disabled>Select horse</option>
-        <option v-for="horse in store.horses.filter(h => h.active)" :key="horse.id" :value="horse.id" :disabled="form.horse_ids.some((id, i) => i !== index && id === horse.id)">{{ horse.name }}</option>
+        <option v-for="horse in eligibleHorses" :key="horse.id" :value="horse.id" :disabled="form.horse_ids.some((id, i) => i !== index && id === horse.id)">{{ horse.name }}</option>
       </select>
     </div>
+    <p v-if="horseWarning" role="alert" class="text-red-700">{{ horseWarning }} <RouterLink to="/admin/horses" class="underline">Manage horse eligibility</RouterLink>.</p>
     <label class="flex gap-2 items-center"><input v-model="form.weekly" type="checkbox" /> Repeat weekly from this date</label>
     <p v-if="form.weekly" class="text-sm text-light-brown">Reserves this time every week until cancelled.</p>
     <div><label for="session-notes" class="form-label">Notes (optional)</label><textarea id="session-notes" v-model="form.notes" class="form-input" maxlength="5000"></textarea></div>
     <p class="text-sm text-light-brown">This records the reservation only. It does not sign a waiver for the rider.</p>
     <p v-if="error" role="alert" class="text-red-700">{{ error }}</p>
     <div class="flex gap-3">
-      <button class="btn-primary" type="submit" :disabled="saving || !form.lesson_type_id">{{ saving ? 'Saving…' : 'Save Session' }}</button>
+      <button class="btn-primary" type="submit" :disabled="saving || !form.lesson_type_id || !!horseWarning">{{ saving ? 'Saving…' : 'Save Session' }}</button>
       <button class="btn-secondary" type="button" :disabled="saving" @click="$emit('cancel')">Cancel</button>
     </div>
   </form>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useAdminStore } from '@/stores/adminStore'
 import { fetchLessonTypes, fetchBusinessTimezone } from '@/services/apiService'
 import { api } from '@/lib/api'
@@ -58,6 +59,12 @@ const props = defineProps<{ riderId?: string }>()
 const emit = defineEmits<{ saved: []; cancel: [] }>()
 const store = useAdminStore()
 const lessons = ref<LessonType[]>([])
+const eligibleHorses = computed(() => store.horses.filter(h => h.active && !h.deletedAt && h.eligibleLessonTypeIds?.includes(form.lesson_type_id)))
+const horseWarning = computed(() => {
+  const lesson = lessons.value.find(l => l.id === form.lesson_type_id)
+  if (!lesson || eligibleHorses.value.length >= lesson.requiredHorseCount) return ''
+  return `${lesson.name} requires ${lesson.requiredHorseCount} eligible active horse(s), but only ${eligibleHorses.value.length} are configured. Update the horses’ eligible lessons before saving.`
+})
 const timezone = ref<string | null>(null)
 const saving = ref(false)
 const error = ref('')
@@ -77,7 +84,7 @@ onMounted(async () => {
 function resetParticipants() {
   const lesson = lessons.value.find(l => l.id === form.lesson_type_id)
   form.rider_ids = Array.from({ length: lesson?.requiredRiderCount || 1 }, (_, i) => form.rider_ids[i] || '')
-  form.horse_ids = Array.from({ length: lesson?.requiredHorseCount || 1 }, (_, i) => form.horse_ids[i] || '')
+  form.horse_ids = Array.from({ length: lesson?.requiredHorseCount || 1 }, (_, i) => eligibleHorses.value.some(h => h.id === form.horse_ids[i]) ? form.horse_ids[i] : '')
 }
 function selectRider(index: number) {
   const rider = store.getRider(form.rider_ids[index])

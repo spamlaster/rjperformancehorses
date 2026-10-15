@@ -81,6 +81,7 @@ export async function updateLessonType(id: string, updates: Partial<LessonType>)
 // ============================================================
 
 const toHorse = (row: Row): Horse => ({
+  eligibleLessonTypeIds: row.eligible_lesson_type_ids || [],
   id: row.id,
   name: row.name,
   breed: row.breed,
@@ -97,6 +98,7 @@ const toHorse = (row: Row): Horse => ({
 })
 
 const horseFields = (horse: Partial<Horse>): Row => ({
+  eligible_lesson_type_ids: horse.eligibleLessonTypeIds,
   name: horse.name,
   breed: horse.breed,
   age: horse.age,

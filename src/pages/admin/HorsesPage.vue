@@ -45,6 +45,15 @@
               </label>
             </div>
 
+            <fieldset>
+              <legend class="form-label">Eligible Lessons</legend>
+              <p class="text-sm text-light-brown">Choose which lessons this horse can be booked for.</p>
+              <label v-for="lesson in adminStore.lessonTypes" :key="lesson.id" class="flex items-center gap-2">
+                <input v-model="formData.eligibleLessonTypeIds" type="checkbox" :value="lesson.id" />
+                <span>{{ lesson.name }}</span>
+              </label>
+            </fieldset>
+
             <div class="flex gap-3 pt-4">
               <button type="submit" class="btn-primary flex-1">Save</button>
               <button type="button" @click="closeForm" class="btn-secondary flex-1">Cancel</button>
@@ -119,11 +128,12 @@ const formData = ref<Partial<Horse>>({
   age: undefined,
   experienceLevel: 'beginner_friendly',
   active: true,
+  eligibleLessonTypeIds: [],
 })
 
 const editHorse = (horse: Horse) => {
   editingHorse.value = horse
-  formData.value = { ...horse }
+  formData.value = { ...horse, eligibleLessonTypeIds: [...(horse.eligibleLessonTypeIds || [])] }
   showAddForm.value = true
 }
 
@@ -136,6 +146,7 @@ const closeForm = () => {
     age: undefined,
     experienceLevel: 'beginner_friendly',
     active: true,
+    eligibleLessonTypeIds: [],
   }
 }
 

@@ -31,6 +31,7 @@ export interface Rider {
 }
 
 export interface Horse {
+  eligibleLessonTypeIds?: string[];
   id: string;
   name: string;
   breed?: string;

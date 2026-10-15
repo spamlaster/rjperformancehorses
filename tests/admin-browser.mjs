@@ -25,9 +25,19 @@ try{
  // Availability Active toggles persist and drive public slots. Isolated fixture: Sunday 05:00-06:00.
  sql(`INSERT INTO lesson_types(id,name,duration_minutes,price,active) VALUES ('${fx.lesson}','Verify lesson ${uid}',30,1,1);
   INSERT INTO horses(id,name,active) VALUES ('${fx.horse}','${fx.horseName}',1);
-  INSERT INTO horse_lesson_types(id,horse_id,lesson_type_id,eligible) VALUES ('verify-e-${uid}','${fx.horse}','${fx.lesson}',1);
+  INSERT INTO horse_lesson_types(id,horse_id,lesson_type_id,eligible) VALUES ('verify-e-${uid}','${fx.horse}','${fx.lesson}',0);
   INSERT INTO instructor_availability(id,day_of_week,start_time,end_time,active) VALUES ('${fx.iw}',0,'05:00','06:00',1);
   INSERT INTO horse_recurring_availability(id,horse_id,day_of_week,start_time,end_time,active) VALUES ('${fx.hw}','${fx.horse}',0,'05:00','06:00',1);`)
+ // Configure the fixture through the horse editor, as production admins do.
+ await page.goto(`${base}/admin/horses`)
+ row=page.locator('tr').filter({hasText:fx.horseName});await row.getByRole('button',{name:'Edit',exact:true}).click()
+ await page.getByLabel(`Verify lesson ${uid}`,{exact:true}).check()
+ await page.getByRole('button',{name:'Save',exact:true}).click()
+ await page.getByText('Horse updated',{exact:true}).waitFor()
+ await page.reload();row=page.locator('tr').filter({hasText:fx.horseName})
+ await row.getByRole('button',{name:'Edit',exact:true}).click()
+ assert.equal(await page.getByLabel(`Verify lesson ${uid}`,{exact:true}).isChecked(),true)
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();pass('horse lesson eligibility persists after refresh')
  const today=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Denver'})),sunday=new Date(today);sunday.setDate(today.getDate()+(7-today.getDay()))
  const sundayDate=`${sunday.getFullYear()}-${String(sunday.getMonth()+1).padStart(2,'0')}-${String(sunday.getDate()).padStart(2,'0')}`
  const publicSlots=async()=>(await slots(fx.lesson,sundayDate)).map(s=>s.start_time)
@@ -57,6 +67,7 @@ try{
  await page.getByRole('heading',{name:'Add Session',exact:true}).waitFor()
  assert.equal(await page.getByLabel('Rider',{exact:true}).inputValue(),`verify-rider-${uid}`);pass('rider Add Session preselects saved rider')
  await page.getByLabel('Lesson',{exact:true}).selectOption(fx.lesson)
+ assert.deepEqual(await page.getByLabel('Horse',{exact:true}).locator('option:not([disabled])').evaluateAll(options=>options.map(o=>o.value)),[fx.horse]);pass('session offers only horses eligible for selected lesson')
  await page.getByLabel('Date / First Session',{exact:true}).fill(sundayDate)
  await page.getByLabel('Start Time',{exact:true}).fill('05:00')
  await page.getByLabel('Horse',{exact:true}).selectOption(fx.horse)
