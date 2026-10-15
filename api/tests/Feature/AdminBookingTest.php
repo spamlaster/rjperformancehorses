@@ -88,49 +88,39 @@ class AdminBookingTest extends TestCase
         $this->assertDatabaseCount('recurring_lessons', 0);
     }
 
-    public function test_rejects_wrong_contact_rider_count_and_ineligible_horses(): void
+    public function test_rejects_wrong_contact_rider_count_and_inactive_horses(): void
     {
         $this->actingAs(User::factory()->admin()->create());
         DB::table('customers')->insert(['id' => 'other-contact', 'first_name' => 'Other', 'last_name' => 'Contact', 'email' => 'other@example.com']);
         $this->postJson('/api/admin/bookings', $this->payload(['customer_id' => 'other-contact']))->assertUnprocessable()->assertJsonValidationErrors('rider_ids');
         $this->postJson('/api/admin/bookings', $this->payload(['rider_ids' => ['saved-rider', 'saved-rider']]))->assertUnprocessable();
         $this->postJson('/api/admin/bookings', $this->payload(['horse_ids' => ['test-h2']]))->assertUnprocessable()->assertJsonValidationErrors('horse_ids');
-        DB::table('horse_lesson_types')->where('horse_id', 'test-h1')->update(['eligible' => false]);
+        DB::table('horses')->where('id', 'test-h1')->update(['deleted_at' => now()]);
         $this->postJson('/api/admin/bookings', $this->payload())->assertUnprocessable()->assertJsonValidationErrors('horse_ids');
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    public function test_admin_can_configure_horse_eligibility_and_book_the_horse(): void
+    public function test_new_active_horse_can_be_booked_without_eligibility_or_hours_setup(): void
     {
         $this->actingAs(User::factory()->admin()->create());
-        $horseId = $this->postJson('/api/admin/horses', [
-            'name' => 'New lesson horse', 'eligible_lesson_type_ids' => ['test-lesson'],
-        ])->assertCreated()->assertJsonPath('eligible_lesson_type_ids', ['test-lesson'])->json('id');
-        $this->assertDatabaseHas('horse_lesson_types', ['horse_id' => $horseId, 'lesson_type_id' => 'test-lesson', 'eligible' => true]);
-        $this->patchJson("/api/admin/horses/{$horseId}", ['name' => 'Renamed lesson horse'])
-            ->assertOk()->assertJsonPath('eligible_lesson_type_ids', ['test-lesson']);
-        $this->getJson('/api/admin/horses')->assertOk()->assertJsonFragment([
-            'id' => $horseId, 'eligible_lesson_type_ids' => ['test-lesson'],
-        ]);
+        $horseId = $this->postJson('/api/admin/horses', ['name' => 'New lesson horse'])
+            ->assertCreated()->assertJsonPath('active', true)->json('id');
+        $this->assertDatabaseMissing('horse_lesson_types', ['horse_id' => $horseId]);
+        $this->assertDatabaseMissing('horse_recurring_availability', ['horse_id' => $horseId]);
         $this->postJson('/api/admin/bookings', $this->payload(['horse_ids' => [$horseId]]))->assertCreated();
         $this->assertDatabaseHas('booking_horses', ['horse_id' => $horseId]);
-        $this->patchJson("/api/admin/horses/{$horseId}", ['eligible_lesson_type_ids' => []])
-            ->assertOk()->assertJsonPath('eligible_lesson_type_ids', []);
+        $this->patchJson("/api/admin/horses/{$horseId}", ['active' => false])->assertOk();
         $this->postJson('/api/admin/bookings', $this->payload(['horse_ids' => [$horseId], 'time' => '15:00']))
             ->assertUnprocessable()->assertJsonValidationErrors('horse_ids');
         $this->assertDatabaseCount('bookings', 1);
     }
 
-    public function test_invalid_horse_eligibility_does_not_save_partial_changes(): void
+    public function test_legacy_lesson_eligibility_does_not_block_admin_session(): void
     {
         $this->actingAs(User::factory()->admin()->create());
-        $this->patchJson('/api/admin/horses/test-h1', ['name' => 'Should not save', 'eligible_lesson_type_ids' => ['missing']])
-            ->assertUnprocessable()->assertJsonValidationErrors('eligible_lesson_type_ids.0');
-        $this->assertDatabaseMissing('horses', ['name' => 'Should not save']);
-        $this->assertDatabaseHas('horse_lesson_types', ['horse_id' => 'test-h1', 'lesson_type_id' => 'test-lesson', 'eligible' => true]);
-        $this->actingAs(User::factory()->create());
-        $this->patchJson('/api/admin/horses/test-h1', ['eligible_lesson_type_ids' => []])->assertForbidden();
-        $this->assertDatabaseHas('horse_lesson_types', ['horse_id' => 'test-h1', 'lesson_type_id' => 'test-lesson', 'eligible' => true]);
+        DB::table('horse_lesson_types')->update(['eligible' => false]);
+        $this->postJson('/api/admin/bookings', $this->payload())->assertCreated();
+        $this->assertDatabaseHas('booking_horses', ['horse_id' => 'test-h1']);
     }
 
     public function test_rejects_blocked_and_past_times(): void

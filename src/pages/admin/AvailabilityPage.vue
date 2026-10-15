@@ -1,272 +1,81 @@
 <template>
   <AdminLayout>
-    <div class="space-y-8">
+    <div class="space-y-6 max-w-4xl">
       <div>
-        <h1 class="text-3xl font-serif font-bold text-text-dark">Availability Management</h1>
-        <p class="text-light-brown text-sm mt-2">
-          Bookable lesson times are based on both instructor and eligible horse availability.
-        </p>
+        <h1 class="text-3xl font-serif font-bold text-text-dark">Availability</h1>
+        <p class="text-light-brown mt-2">Set Rylie’s weekly hours, then each horse’s hours. Customers can book where both schedules overlap.</p>
+        <p class="text-sm text-light-brown mt-2">Hours repeat every week in the ranch’s local time. Existing lessons and time off are removed from online booking automatically.</p>
       </div>
-
-      <!-- Instructor Availability -->
-      <div class="card">
-        <div class="card-padding border-b border-border-light">
-          <h2 class="text-xl font-bold">📅 Your Weekly Schedule</h2>
-          <p class="text-light-brown text-sm mt-2">
-            Configure your recurring availability for each day of the week.
-          </p>
-        </div>
-
-        <div v-if="adminStore.isLoading" class="p-6 text-center text-light-brown">
-          Loading availability...
-        </div>
-        <div v-else class="card-padding space-y-6">
-          <div v-for="dayOfWeek in [0, 1, 2, 3, 4, 5, 6]" :key="dayOfWeek" class="space-y-3">
-            <h3 class="font-bold text-text-dark">{{ dayName(dayOfWeek) }}</h3>
-
-            <div class="pl-4 space-y-2 border-l-2 border-border-light">
-              <div v-if="getInstructorWindowsForDay(dayOfWeek).length === 0" class="text-light-brown italic">
-                Not available
-              </div>
-
-              <div v-for="slot in getInstructorWindowsForDay(dayOfWeek)" :key="slot.id" class="flex items-center gap-3 p-3 bg-gray-50 rounded">
-                <div class="flex-1">
-                  <span class="font-medium">{{ formatTime(slot.startTime) }} – {{ formatTime(slot.endTime) }}</span>
-                  <span v-if="!slot.active" class="ml-2 text-xs text-light-brown">(disabled)</span>
-                </div>
-                <label class="flex items-center gap-2">
-                  <input
-                    :checked="slot.active"
-                    :disabled="savingIds.has(slot.id)"
-                    type="checkbox"
-                    class="w-4 h-4"
-                    @change="toggleInstructorActive(slot.id, $event)"
-                  />
-                  <span class="text-sm">Active</span>
-                </label>
-                <button @click="removeInstructorWindow(slot.id)" class="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">
-                  Remove
-                </button>
-              </div>
-
-              <button @click="showAddInstructorForm(dayOfWeek)" class="text-sm text-accent-gold hover:underline font-medium">
-                + Add time window
-              </button>
-            </div>
+      <div class="card card-padding space-y-4">
+        <div class="flex flex-wrap items-end gap-4">
+          <div class="flex-1 min-w-[12rem]">
+            <label for="schedule-resource" class="form-label">Whose hours?</label>
+            <select id="schedule-resource" v-model="selectedHorse" :disabled="hoursSaving" class="form-select" @change="closeHoursForm">
+              <option value="">Rylie</option>
+              <option v-for="horse in adminStore.horses" :key="horse.id" :value="horse.id">{{ horse.name }}{{ horse.active ? '' : ' (inactive)' }}</option>
+            </select>
           </div>
+          <RouterLink to="/admin/horses" class="btn-secondary">Manage horses</RouterLink>
         </div>
+        <p v-if="!adminStore.horses.length && !adminStore.isLoading" class="text-light-brown">Add a horse under Horses, then choose it here to set its hours.</p>
+        <p v-if="selectedHorse && !adminStore.getHorse(selectedHorse)?.active" role="status" class="text-red-700">This horse is inactive. Activate it under Horses to use it for lessons.</p>
       </div>
-
-      <!-- Add Instructor Window Form -->
-      <div v-if="addInstructorFormDay !== null" class="card card-padding bg-blue-50 border border-blue-200">
-        <h3 class="font-bold mb-4">Add {{ dayName(addInstructorFormDay) }} Time Window</h3>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          <div>
-            <label class="form-label">Start Time</label>
-            <input v-model="newInstructorWindow.startTime" type="time" class="form-input" />
+      <p v-if="adminStore.isLoading" role="status">Loading hours…</p>
+      <section v-else class="card card-padding space-y-5" :aria-label="`${resourceName} weekly hours`">
+        <h2 class="text-xl font-bold">{{ resourceName }}’s weekly hours</h2>
+        <div v-for="day in [1, 2, 3, 4, 5, 6, 0]" :key="day" class="border-t border-border-light pt-4 space-y-3" :data-day="day">
+          <div class="flex items-center justify-between gap-3">
+            <h3 class="font-bold">{{ dayName(day) }}</h3>
+            <button type="button" class="text-sm text-dark-brown underline font-semibold" @click="openHoursForm(day)">+ Add hours</button>
           </div>
-          <div>
-            <label class="form-label">End Time</label>
-            <input v-model="newInstructorWindow.endTime" type="time" class="form-input" />
-          </div>
-          <div>
-            <label class="flex items-center gap-2 mt-8">
-              <input v-model="newInstructorWindow.active" type="checkbox" />
-              <span>Active</span>
+          <p v-if="!windowsForDay(day).length" class="text-sm text-light-brown">No hours set</p>
+          <div v-for="slot in windowsForDay(day)" :key="slot.id" class="flex flex-wrap items-center gap-3 p-3 bg-gray-50 rounded">
+            <span class="flex-1 font-medium">{{ formatTime(slot.startTime) }} – {{ formatTime(slot.endTime) }}</span>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" :checked="slot.active" :disabled="savingIds.has(slot.id)" :aria-label="`${dayName(day)} ${formatTime(slot.startTime)} enabled`"
+                @change="selectedHorse ? toggleHorseActive(slot.id, $event) : toggleInstructorActive(slot.id, $event)" /> Enabled
             </label>
+            <button type="button" class="text-sm text-red-700 underline" @click="selectedHorse ? removeHorseWindow(slot.id) : removeInstructorWindow(slot.id)">Remove</button>
           </div>
-        </div>
-        <div class="flex gap-3">
-          <button @click="addInstructorWindow" class="btn-primary">Add Window</button>
-          <button @click="addInstructorFormDay = null" class="btn-secondary">Cancel</button>
-        </div>
-      </div>
-
-      <!-- Horse Recurring Availability -->
-      <div class="card">
-        <div class="card-padding border-b border-border-light">
-          <h2 class="text-xl font-bold">🐴 Horse Availability</h2>
-          <p class="text-light-brown text-sm mt-2">
-            Configure recurring availability for each horse.
+          <p v-if="selectedHorse && windowsForDay(day).some(w => w.active)" class="text-sm text-light-brown">
+            {{ sharedHours(day) ? `Shared hours with Rylie: ${sharedHours(day)}. Lessons must fit within these hours.` : 'No shared hours with Rylie. Choose Rylie above and add hours that overlap.' }}
           </p>
-        </div>
-
-        <div v-if="adminStore.isLoading" class="p-6 text-center text-light-brown">
-          Loading horse availability...
-        </div>
-        <div v-else class="card-padding space-y-8">
-          <div v-for="horse in adminStore.horses" :key="horse.id" class="border-b border-border-light pb-6">
-            <h3 class="font-bold text-lg text-text-dark mb-4">{{ horse.name }}</h3>
-
-            <div class="space-y-6 pl-4">
-              <div v-for="dayOfWeek in [0, 1, 2, 3, 4, 5, 6]" :key="`${horse.id}-${dayOfWeek}`" class="space-y-3">
-                <h4 class="font-medium text-text-dark">{{ dayName(dayOfWeek) }}</h4>
-                <p
-                  v-if="getHorseWindowsForDay(horse.id, dayOfWeek).length && !hasActiveInstructorHours(dayOfWeek)"
-                  class="text-xs text-light-brown italic"
-                >
-                  Not currently bookable — no instructor hours this day
-                </p>
-
-                <div class="pl-4 space-y-2 border-l-2 border-border-light">
-                  <div v-if="getHorseWindowsForDay(horse.id, dayOfWeek).length === 0" class="text-light-brown italic">
-                    Unavailable
-                  </div>
-
-                  <div v-for="slot in getHorseWindowsForDay(horse.id, dayOfWeek)" :key="slot.id" class="flex items-center gap-3 p-3 bg-gray-50 rounded">
-                    <div class="flex-1">
-                      <span class="font-medium">{{ formatTime(slot.startTime) }} – {{ formatTime(slot.endTime) }}</span>
-                      <span v-if="!slot.active" class="ml-2 text-xs text-light-brown">(disabled)</span>
-                    </div>
-                    <label class="flex items-center gap-2">
-                      <input
-                        :checked="slot.active"
-                        :disabled="savingIds.has(slot.id)"
-                        type="checkbox"
-                        class="w-4 h-4"
-                        @change="toggleHorseActive(slot.id, $event)"
-                      />
-                      <span class="text-sm">Active</span>
-                    </label>
-                    <button @click="removeHorseWindow(slot.id)" class="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">
-                      Remove
-                    </button>
-                  </div>
-
-                  <button @click="showAddHorseForm(horse.id, dayOfWeek)" class="text-sm text-accent-gold hover:underline font-medium">
-                    + Add time window
-                  </button>
-                </div>
-              </div>
+          <form v-if="editingDay === day" class="p-4 rounded bg-gray-50 space-y-3" @submit.prevent="saveHours">
+            <p class="font-semibold">Add {{ dayName(day) }} hours for {{ resourceName }}</p>
+            <div class="grid grid-cols-2 gap-3">
+              <div><label :for="`hours-start-${day}`" class="form-label">Start time</label><input :id="`hours-start-${day}`" v-model="currentWindow.startTime" type="time" required class="form-input" /></div>
+              <div><label :for="`hours-end-${day}`" class="form-label">End time</label><input :id="`hours-end-${day}`" v-model="currentWindow.endTime" type="time" required class="form-input" /></div>
             </div>
+            <div class="flex gap-3"><button type="submit" :disabled="hoursSaving" class="btn-primary">{{ hoursSaving ? 'Saving…' : 'Save hours' }}</button><button type="button" :disabled="hoursSaving" class="btn-secondary" @click="closeHoursForm">Cancel</button></div>
+          </form>
+        </div>
+      </section>
+      <details class="card card-padding">
+        <summary class="font-bold text-xl cursor-pointer">Time off &amp; blocked times</summary>
+        <p class="text-sm text-light-brown my-4">Block a date for a vacation, vet visit, or other time away.</p>
+        <form class="space-y-4" @submit.prevent="addBlockedTime">
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div><label for="block-resource" class="form-label">Who is unavailable?</label><select id="block-resource" v-model="blockForm.horseId" class="form-select"><option value="">Rylie (all lessons)</option><option v-for="horse in adminStore.horses" :key="horse.id" :value="horse.id">{{ horse.name }}</option></select></div>
+            <div><label for="block-date" class="form-label">Date</label><input id="block-date" v-model="blockForm.date" type="date" required class="form-input" /></div>
+            <div><label for="block-start" class="form-label">Start time</label><input id="block-start" v-model="blockForm.startTime" type="time" required class="form-input" /></div>
+            <div><label for="block-end" class="form-label">End time</label><input id="block-end" v-model="blockForm.endTime" type="time" required class="form-input" /></div>
           </div>
-
-          <div v-if="adminStore.horses.length === 0" class="p-6 text-center text-light-brown">
-            No horses configured yet.
-          </div>
+          <div><label for="block-reason" class="form-label">Reason (optional)</label><input id="block-reason" v-model="blockForm.reason" class="form-input" /></div>
+          <button class="btn-primary" type="submit">Block time</button>
+        </form>
+        <p v-if="!adminStore.blockedTimes.length" class="mt-4 text-light-brown">No time off scheduled.</p>
+        <div v-for="block in adminStore.blockedTimes" :key="block.id" class="border-t border-border-light mt-4 pt-4 flex flex-wrap items-center justify-between gap-3">
+          <div><p class="font-semibold">{{ block.horseId ? getHorseName(block.horseId) : 'Rylie' }} · {{ block.date }}</p><p>{{ formatTime(block.startTime) }} – {{ formatTime(block.endTime) }} {{ block.reason ? `· ${block.reason}` : '' }}</p></div>
+          <button class="text-red-700 underline" @click="deleteBlockedTime(block.id)">Remove block</button>
         </div>
-      </div>
-
-      <!-- Add Horse Window Form -->
-      <div v-if="addHorseFormData.horseId" class="card card-padding bg-blue-50 border border-blue-200">
-        <h3 class="font-bold mb-4">Add {{ getHorseName(addHorseFormData.horseId) }} – {{ dayName(addHorseFormData.dayOfWeek) }} Window</h3>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          <div>
-            <label class="form-label">Start Time</label>
-            <input v-model="newHorseWindow.startTime" type="time" class="form-input" />
-          </div>
-          <div>
-            <label class="form-label">End Time</label>
-            <input v-model="newHorseWindow.endTime" type="time" class="form-input" />
-          </div>
-          <div>
-            <label class="flex items-center gap-2 mt-8">
-              <input v-model="newHorseWindow.active" type="checkbox" />
-              <span>Active</span>
-            </label>
-          </div>
-        </div>
-        <div class="flex gap-3">
-          <button @click="addHorseWindow" class="btn-primary">Add Window</button>
-          <button @click="addHorseFormData.horseId = ''" class="btn-secondary">Cancel</button>
-        </div>
-      </div>
-
-      <!-- Blocked Times -->
-      <div class="card">
-        <div class="card-padding border-b border-border-light">
-          <h2 class="text-xl font-bold">🚫 Blocked Times</h2>
-          <p class="text-light-brown text-sm mt-2">
-            Mark specific dates and times as unavailable (vet appointments, vacation, etc.).
-          </p>
-        </div>
-
-        <!-- Add Blocked Time Form -->
-        <div class="card-padding border-b border-border-light bg-gray-50">
-          <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div>
-              <label class="form-label">Type</label>
-              <select v-model="blockForm.horseId" class="form-select">
-                <option value="">Instructor-wide</option>
-                <option v-for="horse in adminStore.horses" :key="horse.id" :value="horse.id">
-                  {{ horse.name }} (horse-specific)
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="form-label">Date</label>
-              <input v-model="blockForm.date" type="date" class="form-input" />
-            </div>
-            <div>
-              <label class="form-label">Start Time</label>
-              <input v-model="blockForm.startTime" type="time" class="form-input" />
-            </div>
-            <div>
-              <label class="form-label">End Time</label>
-              <input v-model="blockForm.endTime" type="time" class="form-input" />
-            </div>
-            <div>
-              <label class="form-label">Reason</label>
-              <input v-model="blockForm.reason" type="text" placeholder="Vet, Vacation, etc." class="form-input" />
-            </div>
-          </div>
-          <button
-            @click="addBlockedTime"
-            :disabled="!blockForm.date || !blockForm.startTime || !blockForm.endTime"
-            class="btn-primary mt-4"
-          >
-            + Add Blocked Time
-          </button>
-        </div>
-
-        <!-- Blocked Times Table -->
-        <div v-if="adminStore.blockedTimes.length === 0" class="p-6 text-center text-light-brown">
-          No blocked times.
-        </div>
-        <div v-else class="overflow-x-auto">
-          <table class="w-full">
-            <thead class="border-b border-border-light">
-              <tr class="text-left">
-                <th class="p-4 font-bold text-text-dark">Type</th>
-                <th class="p-4 font-bold text-text-dark">Date</th>
-                <th class="p-4 font-bold text-text-dark">Start Time</th>
-                <th class="p-4 font-bold text-text-dark">End Time</th>
-                <th class="p-4 font-bold text-text-dark">Reason</th>
-                <th class="p-4 font-bold text-text-dark">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="block in adminStore.blockedTimes"
-                :key="block.id"
-                class="border-b border-border-light hover:bg-gray-50"
-              >
-                <td class="p-4">
-                  {{ block.horseId ? getHorseName(block.horseId) : 'Instructor' }}
-                </td>
-                <td class="p-4 text-sm">{{ block.date }}</td>
-                <td class="p-4 text-sm">{{ block.startTime }}</td>
-                <td class="p-4 text-sm">{{ block.endTime }}</td>
-                <td class="p-4 text-sm">{{ block.reason || '—' }}</td>
-                <td class="p-4">
-                  <button
-                    @click="deleteBlockedTime(block.id)"
-                    class="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      </details>
     </div>
   </AdminLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { computed, ref, reactive } from 'vue'
+import { useRoute } from 'vue-router'
 import AdminLayout from '@/components/layouts/AdminLayout.vue'
 import { useAdminStore } from '@/stores/adminStore'
 import { useNotification } from '@/composables/useNotification'
@@ -275,6 +84,38 @@ import { formatTime, validateNewWindow } from '@/utils/availabilityValidation'
 import type { BlockedTime } from '@/types/models'
 
 const adminStore = useAdminStore()
+const route = useRoute()
+const selectedHorse = ref(typeof route.query.horse === 'string' ? route.query.horse : '')
+const resourceName = computed(() => selectedHorse.value ? getHorseName(selectedHorse.value) : 'Rylie')
+const hoursSaving = ref(false)
+const windowsForDay = (day: number) => selectedHorse.value ? getHorseWindowsForDay(selectedHorse.value, day) : getInstructorWindowsForDay(day)
+const currentWindow = computed(() => selectedHorse.value ? newHorseWindow : newInstructorWindow)
+const editingDay = computed(() => selectedHorse.value ? (addHorseFormData.horseId === selectedHorse.value ? addHorseFormData.dayOfWeek : null) : addInstructorFormDay.value)
+const closeHoursForm = () => { addInstructorFormDay.value = null; addHorseFormData.horseId = '' }
+const openHoursForm = (day: number) => {
+  closeHoursForm()
+  if (selectedHorse.value) showAddHorseForm(selectedHorse.value, day)
+  else showAddInstructorForm(day)
+}
+const saveHours = async () => {
+  if (hoursSaving.value) return
+  hoursSaving.value = true
+  try {
+    if (selectedHorse.value) await addHorseWindow()
+    else await addInstructorWindow()
+  } finally { hoursSaving.value = false }
+}
+const sharedHours = (day: number) => {
+  const ranges: string[] = []
+  for (const horse of getHorseWindowsForDay(selectedHorse.value, day).filter(w => w.active)) {
+    for (const instructor of getInstructorWindowsForDay(day).filter(w => w.active)) {
+      const start = [horse.startTime, instructor.startTime].map(t => t.slice(0, 5)).sort()[1]
+      const end = [horse.endTime, instructor.endTime].map(t => t.slice(0, 5)).sort()[0]
+      if (start < end) ranges.push(`${formatTime(start)} – ${formatTime(end)}`)
+    }
+  }
+  return [...new Set(ranges)].join(', ')
+}
 const { success, error } = useNotification()
 const { confirm } = useConfirmDialog()
 
@@ -305,11 +146,6 @@ const getInstructorWindowsForDay = (dayOfWeek: number) => {
 
 const getHorseWindowsForDay = (horseId: string, dayOfWeek: number) => {
   return adminStore.horseRecurringAvailability.filter(a => a.horseId === horseId && a.dayOfWeek === dayOfWeek)
-}
-
-// Horse windows only produce public slots on days the instructor also has active hours.
-const hasActiveInstructorHours = (dayOfWeek: number) => {
-  return getInstructorWindowsForDay(dayOfWeek).some(a => a.active)
 }
 
 // Active toggles: the store only changes after the API confirms the save.
@@ -347,8 +183,8 @@ const getHorseName = (horseId?: string) => {
 
 const showAddInstructorForm = (dayOfWeek: number) => {
   addInstructorFormDay.value = dayOfWeek
-  newInstructorWindow.startTime = ''
-  newInstructorWindow.endTime = ''
+  newInstructorWindow.startTime = '09:00'
+  newInstructorWindow.endTime = '17:00'
   newInstructorWindow.active = true
 }
 
@@ -405,8 +241,8 @@ const removeInstructorWindow = (id: string) => {
 const showAddHorseForm = (horseId: string, dayOfWeek: number) => {
   addHorseFormData.horseId = horseId
   addHorseFormData.dayOfWeek = dayOfWeek
-  newHorseWindow.startTime = ''
-  newHorseWindow.endTime = ''
+  newHorseWindow.startTime = '09:00'
+  newHorseWindow.endTime = '17:00'
   newHorseWindow.active = true
 }
 
@@ -464,6 +300,11 @@ const removeHorseWindow = (id: string) => {
 const addBlockedTime = async () => {
   if (!blockForm.value.date || !blockForm.value.startTime || !blockForm.value.endTime) {
     error('Please fill in date and times')
+    return
+  }
+
+  if (blockForm.value.startTime >= blockForm.value.endTime) {
+    error('Start time must be before end time')
     return
   }
 

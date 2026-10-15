@@ -3,7 +3,7 @@ import { createServer } from 'vite'
 import { execFileSync, spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { setupRiderAccount } from './support.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const apiRoot = fileURLToPath(new URL('../api/', import.meta.url))
@@ -11,9 +11,9 @@ const env = {
   ...process.env,
   APP_ENV: 'testing', APP_DEBUG: 'false',
   APP_KEY: 'base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
-  DB_CONNECTION: 'mysql', DB_DATABASE: 'rjph_weekly_browser_test',
-  DB_USERNAME: process.env.DB_USERNAME || 'rjph_test',
-  DB_PASSWORD: process.env.DB_PASSWORD || 'rjph_test_local',
+  DB_CONNECTION: 'mysql', DB_DATABASE: 'rjph_test',
+  DB_USERNAME: process.env.DB_USERNAME || 'rjph',
+  DB_PASSWORD: process.env.DB_PASSWORD || 'rjph_local',
   DB_URL: '', CACHE_STORE: 'array', SESSION_DRIVER: 'file',
   MAIL_MAILER: 'log', LOG_CHANNEL: 'single', SANCTUM_STATEFUL_DOMAINS: '127.0.0.1:5197',
 }
@@ -32,9 +32,9 @@ async function waiverPayload() {
 const slots = async (day) => (await fetch(`${base}/api/availability/slots?lesson_type_id=lesson-1&date=${day}`)).json()
 try {
   // This database name is fixed and dedicated to this test; never use the app's DB_DATABASE.
-  artisan('migrate:fresh', '--seed', '--force', '--no-interaction')
+  artisan('migrate:fresh', '--seed', '--seeder=Database\\Seeders\\DevelopmentSeeder', '--force', '--no-interaction')
   artisan('admin:create', 'weekly-admin@example.com', '--password=weekly-test-password')
-  php = spawn('php', ['artisan', 'serve', '--host=127.0.0.1', '--port=8017'], { cwd: apiRoot, env, stdio: 'ignore', detached: true })
+  php = spawn('php', ['artisan', 'serve', '--no-reload', '--host=127.0.0.1', '--port=8017'], { cwd: apiRoot, env, stdio: 'ignore', detached: true })
   for (let attempt = 0; attempt < 100; attempt++) {
     try {
       if ((await fetch('http://127.0.0.1:8017/api/up')).ok) break
@@ -59,6 +59,9 @@ try {
   }
 
   await page.goto(`${base}/book`)
+  await page.waitForURL('**/rider/sign-in?returnTo=/book')
+  await setupRiderAccount(page, 'weekly-customer@example.com')
+  await page.waitForURL('**/book')
   await page.getByRole('button', { name: /Walk & Trot/ }).click()
   await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.locator('input[type=date]').first().fill(date)
@@ -66,7 +69,6 @@ try {
   await page.getByRole('button', { name: 'Next', exact: true }).click()
   await page.getByPlaceholder('John', { exact: true }).fill('Weekly')
   await page.getByPlaceholder('Doe', { exact: true }).first().fill('Customer')
-  await page.getByPlaceholder('john@example.com').fill('weekly-customer@example.com')
   await page.getByLabel('I am the rider').check()
   await page.locator('input[type=date]').nth(1).fill('1990-01-01')
   await page.getByRole('button', { name: 'Next', exact: true }).click()
@@ -74,11 +76,18 @@ try {
   await page.getByRole('button', { name: 'Reserve Weekly Lesson' }).click()
   await page.getByText('Your Weekly Lesson Is Reserved!').waitFor()
   const link = await page.locator('#management-link').inputValue()
-  assert.match(link, /\/reservation#[a-f0-9]{64}$/)
+  assert.match(link, /\/rider\/sign-in#[a-f0-9]{64}$/)
   assert(!(await slots(nextWeek)).some(slot => slot.start_time === '17:00'))
   console.log('PASS: Wednesday 5pm booking holds following Wednesdays and returns a private management link')
 
-  await page.goto(link)
+  await page.goto(link.replace('/rider/sign-in#', '/reservation#'))
+  await page.waitForURL('**/rider/sign-in#*')
+  await page.getByRole('heading', { name: 'Rider Sign In', exact: true }).waitFor()
+  await page.getByRole('heading', { name: 'Manage Booking', exact: true }).waitFor()
+  const signInBox = await page.getByRole('heading', { name: 'Rider Sign In', exact: true }).boundingBox()
+  const manageBox = await page.getByRole('heading', { name: 'Manage Booking', exact: true }).boundingBox()
+  assert(manageBox.y > signInBox.y, 'Manage Booking appears below account sign-in')
+  assert.equal(await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Manage Booking', exact: true }).count(), 0)
   await page.getByRole('heading', { name: 'Upcoming sessions' }).waitFor()
   assert.match(await page.locator('body').innerText(), /Every Wednesday at 5:00 PM/)
   await page.getByRole('button', { name: /^Skip session on/ }).first().click()
@@ -87,6 +96,13 @@ try {
   await page.reload()
   await page.getByText('Skipped', { exact: true }).waitFor()
   console.log('PASS: skipping persists after refresh and keeps the standing weekly reservation')
+  await page.goto(`${base}/rider/sign-in`)
+  await page.getByLabel('Private management link', { exact: true }).fill(link)
+  await page.getByRole('button', { name: 'View Reservation', exact: true }).click()
+  await page.getByRole('heading', { name: 'Upcoming sessions' }).waitFor()
+  await page.getByText('Skipped', { exact: true }).waitFor()
+  assert.match(page.url(), /\/rider\/sign-in#[a-f0-9]{64}$/)
+  console.log('PASS: booking management sits below sign-in and accepts both saved links and pasted private links without login')
 
   await page.getByRole('button', { name: 'Cancel Weekly Reservation', exact: true }).click()
   await page.getByText('Your weekly reservation is cancelled.', { exact: false }).waitFor()
@@ -95,7 +111,7 @@ try {
   await page.getByText('Your weekly reservation is cancelled.', { exact: false }).waitFor()
   console.log('PASS: customer cancellation persists and releases future Wednesdays')
 
-  const response = await page.request.post(`${base}/api/bookings/guest`, { data: {
+  const response = await page.request.post(`${base}/api/bookings/guest`, { headers: { Origin: base, 'X-XSRF-TOKEN': decodeURIComponent((await page.context().cookies()).find(cookie => cookie.name === 'XSRF-TOKEN').value) }, data: {
     waiver: await waiverPayload(),
     lesson_type_id: 'lesson-1', start_time: `${nextWeek}T17:00:00`, end_time: `${nextWeek}T17:30:00`,
     customer: { first_name: 'Replacement', last_name: 'Customer', email: 'replacement@example.com' },
@@ -162,16 +178,21 @@ try {
   await page.getByRole('button', { name: 'Logout', exact: true }).first().click()
   await page.waitForURL('**/admin/login')
   await page.goto(`${base}/rider/sign-in`)
-  await page.getByLabel('Email address', { exact: true }).fill('rider-portal@example.com')
-  await page.getByRole('button', { name: 'Email Me a Sign-In Code', exact: true }).click()
-  await page.getByText('Your sign-in code has been sent.', { exact: true }).waitFor()
-  // The isolated test environment logs mail instead of sending to real people.
-  const mailLog = readFileSync(new URL('../api/storage/logs/laravel.log', import.meta.url), 'utf8')
-  const code = [...mailLog.matchAll(/Your sign-in code is: (\d{6})/g)].at(-1)?.[1]
-  assert(code, 'test sign-in email contains a code')
-  await page.getByLabel('Six-digit sign-in code', { exact: true }).fill(code)
-  await page.getByRole('button', { name: 'Verify and Sign In', exact: true }).click()
+  await page.getByRole('heading', { name: 'Manage Booking', exact: true }).waitFor()
+  const manager = page.getByRole('region', { name: 'Manage Booking', exact: true })
+  await manager.getByLabel('Private management link', { exact: true }).fill('invalid-link')
+  await manager.getByRole('button', { name: 'View Reservation', exact: true }).click()
+  await manager.getByRole('alert').waitFor()
+  await setupRiderAccount(page, 'rider-portal@example.com')
   await page.waitForURL('**/rider')
+  await page.getByRole('button', { name: 'Sign Out', exact: true }).click()
+  await page.waitForURL('**/rider/sign-in')
+  await page.getByLabel('Email address', { exact: true }).fill('rider-portal@example.com')
+  await page.getByLabel('Password', { exact: true }).fill('Rider-test-password!123')
+  assert.equal(await page.getByLabel('Email verification code', { exact: true }).count(), 0)
+  await page.getByRole('button', { name: 'Sign In', exact: true }).click()
+  await page.waitForURL('**/rider')
+  console.log('PASS: account setup verifies email once; returning rider signs in with a password without a code')
   await page.getByLabel('First name', { exact: true }).fill('Portal')
   await page.getByLabel('Last name', { exact: true }).fill('Customer')
   await page.getByRole('button', { name: 'Save Contact Details', exact: true }).click()
@@ -207,7 +228,8 @@ try {
   await page.getByText('Weekly reservation cancelled.', { exact: true }).waitFor()
   assert((await slots(nextWeek)).some(slot => slot.start_time === '16:00'))
   assert.deepEqual(runtime, [])
-  console.log('PASS: passwordless rider portal reuses duplicate profiles, selects saved riders for booking, and manages owned reservations')
+  assert.equal(await page.getByRole('heading', { name: 'Manage Booking', exact: true }).count(), 0)
+  console.log('PASS: verified rider account reuses duplicate profiles, selects saved riders for booking, and manages owned reservations')
   console.log('Weekly browser test: all flows passed, no runtime errors')
 } finally {
   await browser?.close()

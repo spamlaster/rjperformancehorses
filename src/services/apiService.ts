@@ -15,9 +15,10 @@ import type { Customer, Rider, Horse, LessonType, InstructorAvailability, HorseR
 
 type Row = Record<string, any>
 
-async function list<T>(path: string, map: (row: Row) => T, label: string): Promise<T[]> {
+async function list<T>(path: string, map: (row: Row) => T, label: string, strict = false): Promise<T[]> {
   const { data, error } = await api<Row[]>('GET', path)
   if (error) {
+    if (strict) throw new Error(error)
     console.error(`Error fetching ${label}:`, error)
     return []
   }
@@ -47,6 +48,7 @@ async function write(method: 'PATCH' | 'DELETE', path: string, body: Row | undef
 // ============================================================
 
 const toLessonType = (row: Row): LessonType => ({
+  active: row.active,
   id: row.id,
   name: row.name,
   description: row.description,
@@ -60,20 +62,32 @@ const toLessonType = (row: Row): LessonType => ({
   updatedAt: row.updated_at,
 })
 
-export async function fetchLessonTypes(activeOnly = false): Promise<LessonType[]> {
+export async function fetchLessonTypes(activeOnly = false, strict = false): Promise<LessonType[]> {
   // Public visitors only ever see active lesson types; admins see all.
-  return list(activeOnly ? '/lesson-types' : '/admin/lesson-types', toLessonType, 'lesson types')
+  return list(activeOnly ? '/lesson-types' : '/admin/lesson-types', toLessonType, 'lesson types', strict)
+}
+
+const lessonFields = (lesson: Partial<LessonType>): Row => ({
+  name: lesson.name,
+  description: lesson.description,
+  duration_minutes: lesson.durationMinutes,
+  price: lesson.price,
+  difficulty_level: lesson.difficultyLevel,
+  max_group_size: lesson.maxGroupSize,
+  required_horse_count: lesson.requiredHorseCount,
+  required_rider_count: lesson.requiredRiderCount,
+  active: lesson.active,
+})
+
+export async function saveLessonType(lesson: Partial<LessonType>): Promise<LessonType> {
+  const { data, error } = await api<Row>(lesson.id ? 'PATCH' : 'POST',
+    lesson.id ? `/admin/lesson-types/${encodeURIComponent(lesson.id)}` : '/admin/lesson-types', lessonFields(lesson))
+  if (error || !data) throw new Error(error || 'Unable to save the lesson type.')
+  return toLessonType(data)
 }
 
 export async function updateLessonType(id: string, updates: Partial<LessonType>): Promise<boolean> {
-  return write('PATCH', `/admin/lesson-types/${encodeURIComponent(id)}`, {
-    name: updates.name,
-    description: updates.description,
-    duration_minutes: updates.durationMinutes,
-    price: updates.price,
-    difficulty_level: updates.difficultyLevel,
-    max_group_size: updates.maxGroupSize,
-  }, 'lesson type')
+  return write('PATCH', `/admin/lesson-types/${encodeURIComponent(id)}`, lessonFields(updates), 'lesson type')
 }
 
 // ============================================================
@@ -81,7 +95,6 @@ export async function updateLessonType(id: string, updates: Partial<LessonType>)
 // ============================================================
 
 const toHorse = (row: Row): Horse => ({
-  eligibleLessonTypeIds: row.eligible_lesson_type_ids || [],
   id: row.id,
   name: row.name,
   breed: row.breed,
@@ -98,7 +111,6 @@ const toHorse = (row: Row): Horse => ({
 })
 
 const horseFields = (horse: Partial<Horse>): Row => ({
-  eligible_lesson_type_ids: horse.eligibleLessonTypeIds,
   name: horse.name,
   breed: horse.breed,
   age: horse.age,

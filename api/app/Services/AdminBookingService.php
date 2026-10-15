@@ -40,11 +40,9 @@ class AdminBookingService
                 throw ValidationException::withMessages(['rider_ids' => 'Choose the required number of riders belonging to the selected contact.']);
             }
             $horseIds = $data['horse_ids'];
-            $eligible = DB::table('horses')->whereIn('id', $horseIds)->where('active', true)->whereNull('deleted_at')
-                ->whereExists(fn ($q) => $q->from('horse_lesson_types')->whereColumn('horse_lesson_types.horse_id', 'horses.id')
-                    ->where('lesson_type_id', $lesson->id)->where('eligible', true))->count();
-            if (count($horseIds) !== $lesson->required_horse_count || $eligible !== count($horseIds)) {
-                throw ValidationException::withMessages(['horse_ids' => 'Choose the required number of active horses eligible for this lesson.']);
+            $activeCount = DB::table('horses')->whereIn('id', $horseIds)->where('active', true)->whereNull('deleted_at')->count();
+            if (count($horseIds) !== $lesson->required_horse_count || $activeCount !== count($horseIds)) {
+                throw ValidationException::withMessages(['horse_ids' => "Choose {$lesson->required_horse_count} different active horse(s) for this lesson."]);
             }
 
             $startAt = CarbonImmutable::parse("{$data['date']} {$data['time']}", 'UTC');

@@ -13,6 +13,10 @@ export interface RiderAccount {
   reservations: WeeklyReservation[]
 }
 export async function loadRiderAccount(): Promise<RiderAccount | null> {
+  const session = await api<{ signed_in_as_rider: boolean }>('GET', '/rider/auth/options')
+  if (session.error || !session.data) throw new Error(session.error || 'Unable to check your rider sign-in.')
+  if (!session.data.signed_in_as_rider) return null
+
   const result = await api<RiderAccount>('GET', '/rider/account')
   if (result.status === 401 || result.status === 403) return null
   if (result.error || !result.data) throw new Error(result.error || 'Unable to load your rider account.')

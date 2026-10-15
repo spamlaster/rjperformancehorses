@@ -72,6 +72,12 @@ export const useAuthStore = defineStore('auth', () => {
    * Load the signed-in user and admin status (401 = signed out)
    */
   async function checkAdminStatus() {
+    const session = await api<{ signed_in: boolean }>('GET', '/rider/auth/options')
+    if (session.error) throw new Error(session.error)
+    if (!session.data?.signed_in) {
+      setProfile(null)
+      return
+    }
     const { data } = await api<ProfileResponse>('GET', '/auth/me')
     setProfile(data)
   }

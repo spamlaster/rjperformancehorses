@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
@@ -27,8 +28,13 @@ class RiderSignInController extends Controller
 
     public function options(Request $request): JsonResponse
     {
+        $user = $request->user();
+
         return response()->json([
+            'signed_in' => $user !== null,
+            'signed_in_as_rider' => $user && $user->is_active && $user->role === null && $user->email_verified_at !== null,
             'providers' => collect(self::PROVIDERS)->mapWithKeys(fn ($provider) => [$provider => $this->enabled($provider)]),
+            'return_to' => $request->session()->get('rider_return_to', '/rider'),
             'pending_email' => $request->session()->get('rider_oauth.email'),
         ])->header('Cache-Control', 'no-store');
     }
@@ -43,23 +49,61 @@ class RiderSignInController extends Controller
         Mail::to($email)->send(new RiderSignInCode($code));
     }
 
+    public function login(Request $request): JsonResponse
+    {
+        $input = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string']]);
+        $user = User::query()->where('email', mb_strtolower(trim($input['email'])))->first();
+        if (! $user || ! $user->is_active || $user->role !== null || ! $user->password
+            || ! Hash::check($input['password'], $user->password)) {
+            throw ValidationException::withMessages(['email' => 'Email or password is incorrect. Use Reset password if you need a new password.']);
+        }
+        if ($user->email_verified_at === null) {
+            throw ValidationException::withMessages(['email' => 'Verify your email when creating your account before signing in.']);
+        }
+        Auth::guard('web')->login($user);
+        $request->session()->regenerate();
+
+        return response()->json(['success' => true]);
+    }
+
     public function requestCode(Request $request): JsonResponse
     {
         $input = $request->validate(['email' => ['required', 'email', 'max:255']]);
         $email = mb_strtolower(trim($input['email']));
-        $pending = $request->session()->get('rider_oauth');
-        if ($pending && $pending['email'] !== $email) {
+        $oauth = $request->session()->get('rider_oauth');
+        $linking = $oauth && $oauth['email'] === $email && $oauth['expires_at'] > now()->timestamp;
+        $existing = User::query()->where('email', $email)->first();
+        if ($existing && (! $existing->is_active || $existing->role !== null)) {
+            throw ValidationException::withMessages(['email' => 'Use the admin sign-in for staff accounts, or contact Rylie if your account is inactive.']);
+        }
+        if (! $linking) {
+            $password = $request->validate(['password' => ['required', 'string', 'min:8', 'max:255', 'confirmed']])['password'];
+            if ($existing) {
+                throw ValidationException::withMessages(['email' => 'An account already exists. Sign in or use Reset password.']);
+            }
+            $request->session()->put('rider_registration', [
+                'email' => $email, 'password_hash' => Hash::make($password), 'expires_at' => now()->addMinutes(10)->timestamp,
+            ]);
             $request->session()->forget('rider_oauth');
+        }
+        if ($linking) {
+            $request->session()->forget('rider_registration');
         }
         $this->sendCode($email);
 
-        return response()->json(['message' => 'Check your inbox for a sign-in code.']);
+        return response()->json(['message' => 'Check your inbox to verify your email.']);
     }
 
     public function verifyCode(Request $request, RiderAccountService $accounts): JsonResponse
     {
         $input = $request->validate(['email' => ['required', 'email'], 'code' => ['required', 'digits:6']]);
         $email = mb_strtolower(trim($input['email']));
+        $registration = $request->session()->get('rider_registration');
+        $oauth = $request->session()->get('rider_oauth');
+        $context = $registration ?? $oauth;
+        if (! $context || $context['email'] !== $email || $context['expires_at'] <= now()->timestamp) {
+            throw ValidationException::withMessages(['code' => 'Start account setup again before verifying your email.']);
+        }
         $valid = DB::transaction(function () use ($email, $input) {
             $code = DB::table('rider_sign_in_codes')->where('email', $email)->lockForUpdate()->first();
             if (! $code || $code->expires_at <= now()->format('Y-m-d H:i:s') || $code->attempts >= 5) {
@@ -79,16 +123,29 @@ class RiderSignInController extends Controller
         }
         $pending = $request->session()->pull('rider_oauth');
         $identity = $pending && $pending['email'] === $email && $pending['expires_at'] > now()->timestamp ? $pending : null;
-        $user = $accounts->signIn($email, $identity);
+        $user = DB::transaction(function () use ($email, $identity, $registration, $accounts) {
+            $existing = User::query()->where('email', $email)->lockForUpdate()->first();
+            if ($registration && $existing?->password && $existing->email_verified_at !== null) {
+                throw ValidationException::withMessages(['email' => 'This account already has a password. Sign in instead.']);
+            }
+            $user = $accounts->signIn($email, $identity);
+            if ($registration) {
+                $user->update(['password' => $registration['password_hash']]);
+            }
+
+            return $user;
+        });
+        $request->session()->forget('rider_registration');
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
 
         return response()->json(['success' => true]);
     }
 
-    public function redirect(string $provider): RedirectResponse
+    public function redirect(Request $request, string $provider): RedirectResponse
     {
         abort_unless($this->enabled($provider), 404);
+        $request->session()->put('rider_return_to', $request->query('returnTo') === '/book' ? '/book' : '/rider');
         $driver = Socialite::driver($provider);
         if ($provider === 'apple') {
             return $driver->stateless()->cookieNonce()->redirect();
@@ -114,7 +171,7 @@ class RiderSignInController extends Controller
                 Auth::guard('web')->login($user);
                 $request->session()->regenerate();
 
-                return redirect('/rider');
+                return redirect($request->session()->pull('rider_return_to', '/rider') === '/book' ? '/book' : '/rider');
             }
             $email = mb_strtolower(trim((string) $profile->getEmail()));
             if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {

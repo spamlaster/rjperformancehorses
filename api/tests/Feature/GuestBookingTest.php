@@ -85,7 +85,7 @@ class GuestBookingTest extends TestCase
         DB::table('lesson_types')->where('id', 'test-lesson')->update(['required_horse_count' => 2, 'required_rider_count' => 2]);
         $this->setActive('horses', ['test-h2'], true);
 
-        $response = $this->postJson('/api/bookings/guest', [
+        $response = $this->postRiderBooking([
             'lesson_type_id' => 'test-lesson',
             'start_time' => "{$this->date}T10:00:00",
             'end_time' => "{$this->date}T11:00:00",
@@ -93,7 +93,7 @@ class GuestBookingTest extends TestCase
             'waiver' => $this->waiverPayload(2),
             'riders' => [
                 ['first_name' => 'Jane', 'last_name' => 'Smith', 'date_of_birth' => '2010-01-15'],
-                ['first_name' => 'Jack', 'last_name' => 'Smith', 'date_of_birth' => null],
+                ['first_name' => 'Jack', 'last_name' => 'Smith', 'date_of_birth' => '2012-01-15'],
             ],
         ]);
 
@@ -102,7 +102,7 @@ class GuestBookingTest extends TestCase
         $this->assertSame(2, DB::table('booking_riders')->where('booking_id', $bookingId)->count(), 'both riders linked');
         $this->assertSame(2, DB::table('booking_horses')->where('booking_id', $bookingId)->distinct()->count('horse_id'), 'two distinct horses');
         $this->assertSame('pending', DB::table('bookings')->where('id', $bookingId)->value('status'));
-        $this->assertNull(DB::table('riders')->where('first_name', 'Jack')->value('date_of_birth'), 'date of birth is optional');
+        $this->assertSame('2012-01-15', substr(DB::table('riders')->where('first_name', 'Jack')->value('date_of_birth'), 0, 10));
     }
 
     public function test_validation_messages_match_the_old_rpc(): void
@@ -112,22 +112,22 @@ class GuestBookingTest extends TestCase
             'start_time' => "{$this->date}T09:00:00",
             'end_time' => "{$this->date}T10:00:00",
             'customer' => ['first_name' => 'A', 'last_name' => 'B', 'email' => 'a@example.com'],
-            'riders' => [['first_name' => 'A', 'last_name' => 'B']],
+            'riders' => [['first_name' => 'A', 'last_name' => 'B', 'date_of_birth' => '1990-01-01']],
             'waiver' => $this->waiverPayload(),
         ];
 
-        $this->postJson('/api/bookings/guest', [...$base, 'customer' => ['first_name' => 'A', 'last_name' => 'B']])
+        $this->postRiderBooking([...$base, 'customer' => ['first_name' => 'A', 'last_name' => 'B', 'date_of_birth' => '1990-01-01']])
             ->assertUnprocessable()->assertJsonFragment(['customer.email' => ['Customer email is required']]);
-        $this->postJson('/api/bookings/guest', [...$base, 'lesson_type_id' => 'nope'])
+        $this->postRiderBooking([...$base, 'lesson_type_id' => 'nope'])
             ->assertUnprocessable()->assertJsonPath('errors.lesson_type_id.0', 'Lesson type not found or inactive');
-        $this->postJson('/api/bookings/guest', [...$base, 'riders' => [['first_name' => 'A', 'last_name' => 'B'], ['first_name' => 'C', 'last_name' => 'D']]])
+        $this->postRiderBooking([...$base, 'riders' => [['first_name' => 'A', 'last_name' => 'B', 'date_of_birth' => '1990-01-01'], ['first_name' => 'C', 'last_name' => 'D', 'date_of_birth' => '1990-01-01']]])
             ->assertUnprocessable()->assertJsonPath('errors.riders.0', 'This lesson requires exactly 1 rider(s), but 2 were provided');
-        $this->postJson('/api/bookings/guest', [...$base, 'end_time' => "{$this->date}T10:30:00"])
+        $this->postRiderBooking([...$base, 'end_time' => "{$this->date}T10:30:00"])
             ->assertStatus(409)->assertJsonPath('message', 'The requested time is no longer available');
-        $this->postJson('/api/bookings/guest', [...$base, 'start_time' => "{$this->date}T09:15:00", 'end_time' => "{$this->date}T10:15:00"])
+        $this->postRiderBooking([...$base, 'start_time' => "{$this->date}T09:15:00", 'end_time' => "{$this->date}T10:15:00"])
             ->assertStatus(409);
 
-        $this->assertSame(0, DB::table('customers')->where('email', 'a@example.com')->count(), 'failed bookings leave no partial records');
+        $this->assertDatabaseCount('bookings', 0);
     }
 
     public function test_customer_and_rider_deduplication(): void
@@ -148,7 +148,7 @@ class GuestBookingTest extends TestCase
             $this->getJson("/api/availability/slots?lesson_type_id=test-lesson&date={$this->date}")->assertOk();
         }
 
-        $this->postJson('/api/bookings/guest', [])->assertUnprocessable();
+        $this->postRiderBooking([])->assertUnprocessable();
     }
 
     public function test_slots_endpoint_is_public_and_exposes_times_only(): void

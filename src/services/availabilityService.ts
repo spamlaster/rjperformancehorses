@@ -30,7 +30,7 @@ export interface BookableSlot {
  * Business Rules Enforced:
  * 1. Instructor must have active recurring availability covering the lesson
  * 2. Lesson duration must fit completely within an availability window
- * 3. The required number of distinct eligible horses must have active recurring availability
+ * 3. The required number of distinct active horses must have active recurring availability
  * 4. Horses with ZERO recurring availability rows are NOT available
  * 5. No instructor blocks overlapping the slot
  * 6. No horse-specific blocks overlapping the slot

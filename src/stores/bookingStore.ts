@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { birthdayError, currentDateInTimezone } from '@/utils/riderBirthday'
 import type { LessonType } from '@/types/models'
 
 export interface GuestCustomer {
@@ -18,6 +19,7 @@ export interface RiderInfo {
 }
 
 export const useBookingStore = defineStore('booking', () => {
+  const businessDate = ref(currentDateInTimezone())
   const currentStep = ref<number>(0)
   const selectedLessonType = ref<LessonType | null>(null)
   const selectedDate = ref<string>('')
@@ -80,7 +82,7 @@ export const useBookingStore = defineStore('booking', () => {
       const usesContact = i === 0 && r.sameAsCustomer
       const firstName = usesContact ? customerInfo.value.firstName : r.firstName
       const lastName = usesContact ? customerInfo.value.lastName : r.lastName
-      return !!(firstName?.trim() && lastName?.trim() && r.dateOfBirth)
+      return !!(firstName?.trim() && lastName?.trim() && !birthdayError(r.dateOfBirth, businessDate.value))
     })
   }
 
@@ -165,6 +167,7 @@ export const useBookingStore = defineStore('booking', () => {
   }
 
   return {
+    businessDate,
     currentStep,
     selectedLessonType,
     selectedDate,

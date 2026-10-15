@@ -7,9 +7,11 @@ use App\Models\Rider;
 use App\Models\User;
 use App\Services\RiderAccountService;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Two\User as ProviderUser;
@@ -29,13 +31,82 @@ class RiderAccountTest extends TestCase
         $this->buildSchedule();
     }
 
+    public function test_public_sign_in_options_identify_rider_sessions_without_exposing_account_data(): void
+    {
+        $this->getJson('/api/rider/auth/options')->assertOk()->assertJsonPath('signed_in_as_rider', false)->assertJsonMissingPath('customer');
+        $this->actingAs(User::factory()->admin()->create());
+        $this->getJson('/api/rider/auth/options')->assertOk()->assertJsonPath('signed_in_as_rider', false);
+        $this->getJson('/api/rider/account')->assertForbidden();
+        $rider = $this->riderUser();
+        $this->actingAs($rider);
+        $this->getJson('/api/rider/auth/options')->assertOk()->assertJsonPath('signed_in_as_rider', true);
+        $this->getJson('/api/rider/account')->assertOk();
+        $rider->update(['is_active' => false]);
+        $this->getJson('/api/rider/auth/options')->assertOk()->assertJsonPath('signed_in_as_rider', false);
+        $this->getJson('/api/rider/account')->assertForbidden();
+    }
+
     private function requestCode(string $email = 'rider@example.com'): string
     {
         Mail::fake();
-        $this->postJson('/api/rider/auth/email', ['email' => $email])->assertOk();
+        $this->postJson('/api/rider/auth/email', ['email' => $email, 'password' => 'Rider-password!123', 'password_confirmation' => 'Rider-password!123'])->assertOk();
         Mail::assertSent(RiderSignInCode::class);
 
         return Mail::sent(RiderSignInCode::class)->last()->code;
+    }
+
+    public function test_password_sign_in_rejects_incorrect_inactive_and_unverified_accounts_without_sending_codes(): void
+    {
+        Mail::fake();
+        $user = $this->riderUser();
+        $user->update(['password' => 'Rider-password!123']);
+        $this->postJson('/api/rider/auth/login', ['email' => $user->email, 'password' => 'incorrect'])->assertUnprocessable();
+        $this->assertGuest();
+        $user->update(['is_active' => false]);
+        $this->postJson('/api/rider/auth/login', ['email' => $user->email, 'password' => 'Rider-password!123'])->assertUnprocessable();
+        $user->forceFill(['is_active' => true, 'email_verified_at' => null])->save();
+        $this->postJson('/api/rider/auth/login', ['email' => $user->email, 'password' => 'Rider-password!123'])->assertUnprocessable();
+        $this->assertGuest();
+        Mail::assertNothingSent();
+    }
+
+    public function test_registration_requires_a_confirmed_password_and_cannot_replace_an_existing_password(): void
+    {
+        Mail::fake();
+        $this->postJson('/api/rider/auth/email', ['email' => 'new@example.com'])->assertUnprocessable()->assertJsonValidationErrors('password');
+        $this->postJson('/api/rider/auth/email', ['email' => 'new@example.com', 'password' => 'long-password', 'password_confirmation' => 'different'])->assertUnprocessable();
+        $this->assertDatabaseCount('users', 0);
+        $user = $this->riderUser();
+        $user->update(['password' => 'Original-password!123']);
+        $hash = $user->password;
+        $this->postJson('/api/rider/auth/email', ['email' => $user->email, 'password' => 'replacement-password', 'password_confirmation' => 'replacement-password'])->assertUnprocessable();
+        $this->assertSame($hash, $user->fresh()->password);
+        Mail::assertNothingSent();
+    }
+
+    public function test_existing_code_only_accounts_use_a_reset_link_instead_of_creating_another_account(): void
+    {
+        Notification::fake();
+        $user = $this->riderUser('test@example.com');
+        $customer = app(RiderAccountService::class)->customerFor($user);
+        $rider = Rider::create(['customer_id' => $customer->id, 'first_name' => 'Existing', 'last_name' => 'Rider', 'date_of_birth' => '1990-01-01']);
+        $this->postJson('/api/rider/auth/email', ['email' => $user->email, 'password' => 'Password!123', 'password_confirmation' => 'Password!123'])->assertUnprocessable();
+        $this->postJson('/api/rider/auth/forgot-password', ['email' => $user->email])->assertOk();
+        $notification = Notification::sent($user, ResetPassword::class)->sole();
+        $this->postJson('/api/rider/auth/reset-password', ['email' => $user->email, 'token' => $notification->token, 'password' => 'Password!123', 'password_confirmation' => 'Password!123'])->assertOk();
+        $this->postJson('/api/rider/auth/login', ['email' => $user->email, 'password' => 'Password!123'])->assertOk();
+        $this->getJson('/api/rider/account')->assertOk()->assertJsonPath('riders.0.id', $rider->id);
+        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseCount('customers', 1);
+    }
+
+    public function test_booking_requires_a_verified_active_rider_session(): void
+    {
+        $this->postJson('/api/bookings/guest', [])->assertUnauthorized();
+        $this->actingAs(User::factory()->admin()->create())->postJson('/api/bookings/guest', [])->assertForbidden();
+        $user = User::factory()->create(['email_verified_at' => null]);
+        $this->actingAs($user)->postJson('/api/bookings/guest', [])->assertForbidden();
+        $this->assertDatabaseCount('bookings', 0);
     }
 
     private function riderUser(string $email = 'rider@example.com'): User
@@ -58,8 +129,9 @@ class RiderAccountTest extends TestCase
 
         $this->postJson('/api/rider/auth/logout')->assertOk();
         $this->postJson('/api/rider/auth/verify', ['email' => 'test@example.com', 'code' => $code])->assertUnprocessable();
-        $code = $this->requestCode('test@example.com');
-        $this->postJson('/api/rider/auth/verify', ['email' => 'test@example.com', 'code' => $code])->assertOk();
+        Mail::fake();
+        $this->postJson('/api/rider/auth/login', ['email' => 'TEST@example.com', 'password' => 'Rider-password!123'])->assertOk();
+        Mail::assertNothingSent();
         $this->assertDatabaseCount('users', 1);
         $this->assertDatabaseCount('customers', 1);
     }
@@ -93,9 +165,8 @@ class RiderAccountTest extends TestCase
     public function test_staff_cannot_use_passwordless_rider_sign_in_to_bypass_admin_passwords(): void
     {
         $admin = User::factory()->admin()->create(['email' => 'admin@example.com']);
-        $code = $this->requestCode($admin->email);
-
-        $this->postJson('/api/rider/auth/verify', ['email' => $admin->email, 'code' => $code])->assertUnprocessable();
+        $this->postJson('/api/rider/auth/email', ['email' => $admin->email])->assertUnprocessable();
+        $this->postJson('/api/rider/auth/login', ['email' => $admin->email, 'password' => 'password'])->assertUnprocessable();
         $this->assertGuest();
         $this->assertDatabaseCount('customers', 1);
     }
@@ -182,7 +253,7 @@ class RiderAccountTest extends TestCase
         $this->postJson('/api/rider/auth/verify', ['email' => 'test@example.com', 'code' => $code])->assertOk();
         $this->assertDatabaseHas('social_identities', ['provider' => $provider, 'subject' => 'provider-user-123']);
         $this->postJson('/api/rider/auth/logout')->assertOk();
-        $this->get("/api/rider/oauth/{$provider}/callback")->assertRedirect('/rider');
+        $this->withSession(['rider_return_to' => '/book'])->get("/api/rider/oauth/{$provider}/callback")->assertRedirect('/book');
         $this->getJson('/api/rider/account')->assertOk();
         $this->assertDatabaseCount('users', 1);
         $this->assertDatabaseCount('customers', 1);
@@ -193,7 +264,7 @@ class RiderAccountTest extends TestCase
     {
         config(["services.{$provider}.client_id" => 'test-client', "services.{$provider}.client_secret" => 'test-secret', "services.{$provider}.redirect" => "https://example.com/api/rider/oauth/{$provider}/callback"]);
 
-        $response = $this->get("/api/rider/oauth/{$provider}/redirect")->assertRedirect();
+        $response = $this->get("/api/rider/oauth/{$provider}/redirect?returnTo=/book")->assertRedirect()->assertSessionHas('rider_return_to', '/book');
 
         $location = $response->headers->get('Location');
         $this->assertStringContainsString('client_id=test-client', $location);
@@ -234,8 +305,7 @@ class RiderAccountTest extends TestCase
         unset($payload['riders'][0]['id']);
         $payload['customer']['email'] = $user->email;
 
-        $this->postJson('/api/bookings/guest', $payload)->assertUnprocessable()
-            ->assertJsonValidationErrors('customer.email');
+        $this->postJson('/api/bookings/guest', $payload)->assertUnauthorized();
         $this->assertDatabaseCount('riders', 0);
         $this->assertDatabaseCount('bookings', 0);
     }

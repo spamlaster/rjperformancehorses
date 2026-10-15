@@ -24,16 +24,7 @@
         <!-- Contact -->
         <div>
           <h4 class="font-bold mb-4 text-accent-gold">Contact</h4>
-          <p class="text-sm mb-2">
-            <a href="mailto:info@rjperformancehorses.com" class="hover:text-accent-gold">
-              info@rjperformancehorses.com
-            </a>
-          </p>
-          <p class="text-sm mb-2">
-            <a href="tel:+1234567890" class="hover:text-accent-gold">
-              (123) 456-7890
-            </a>
-          </p>
+          <router-link to="/contact" class="text-sm hover:text-accent-gold">Send us a message</router-link>
         </div>
 
         <!-- Booking -->

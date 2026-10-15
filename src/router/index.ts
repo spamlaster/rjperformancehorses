@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { api } from '@/lib/api'
+import RiderResetPasswordPage from '@/pages/public/RiderResetPasswordPage.vue'
 import type { RouteRecordRaw } from 'vue-router'
 
 // Public pages
@@ -10,7 +12,6 @@ import PricingPage from '@/pages/public/PricingPage.vue'
 import FAQPage from '@/pages/public/FAQPage.vue'
 import ContactPage from '@/pages/public/ContactPage.vue'
 import BookingWizardPage from '@/pages/public/BookingWizardPage.vue'
-import ReservationPage from '@/pages/public/ReservationPage.vue'
 import RiderSignInPage from '@/pages/public/RiderSignInPage.vue'
 import RiderAccountPage from '@/pages/public/RiderAccountPage.vue'
 
@@ -22,6 +23,8 @@ import HorsesPage from '@/pages/admin/HorsesPage.vue'
 import BookingsPage from '@/pages/admin/BookingsPage.vue'
 import AvailabilityPage from '@/pages/admin/AvailabilityPage.vue'
 import AccountPage from '@/pages/admin/AccountPage.vue'
+import LessonTypesPage from '@/pages/admin/LessonTypesPage.vue'
+import SetupPage from '@/pages/admin/SetupPage.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -59,6 +62,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Booking',
     component: BookingWizardPage,
   },
+  { path: '/rider/reset-password', name: 'RiderResetPassword', component: RiderResetPasswordPage },
   {
     path: '/rider/sign-in',
     name: 'RiderSignIn',
@@ -72,7 +76,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/reservation',
     name: 'Reservation',
-    component: ReservationPage,
+    redirect: to => ({ path: '/rider/sign-in', hash: to.hash }),
   },
   {
     path: '/admin',
@@ -114,6 +118,8 @@ const routes: RouteRecordRaw[] = [
     component: AvailabilityPage,
     meta: { requiresAuth: true },
   },
+  { path: '/admin/lesson-types', name: 'AdminLessonTypes', component: LessonTypesPage, meta: { requiresAuth: true } },
+  { path: '/admin/setup', name: 'AdminSetup', component: SetupPage, meta: { requiresAuth: true } },
   {
     path: '/admin/account',
     name: 'AdminAccount',
@@ -140,6 +146,13 @@ const router = createRouter({
 
 router.beforeEach(async (to, _from) => {
   const authStore = useAuthStore()
+
+  if (to.path === '/book') {
+    const session = await api<{ signed_in_as_rider: boolean }>('GET', '/rider/auth/options')
+    if (!session.data?.signed_in_as_rider) {
+      return { path: '/rider/sign-in', query: { returnTo: '/book' } }
+    }
+  }
 
   // If visiting /admin/login while already authenticated as admin, redirect to dashboard
   if (to.path === '/admin/login') {

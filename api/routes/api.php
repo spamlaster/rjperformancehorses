@@ -14,7 +14,7 @@ Route::middleware('throttle:public')->group(function () {
     Route::get('/waiver', [PublicController::class, 'waiver']);
     Route::get('/availability/slots', [PublicController::class, 'slots']);
 });
-Route::post('/bookings/guest', [PublicController::class, 'createGuestBooking'])->middleware('throttle:guest-booking');
+Route::post('/bookings/guest', [PublicController::class, 'createGuestBooking'])->middleware(['auth:sanctum', 'throttle:guest-booking']);
 
 Route::middleware('throttle:reservation-management')->group(function () {
     Route::post('/reservations/manage', [GuestReservationController::class, 'show']);
@@ -40,7 +40,10 @@ Route::middleware('auth:sanctum')->group(function () {
 // Admin (replaces the is_admin() RLS policies).
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     Route::patch('/password', [AuthController::class, 'updatePassword'])->middleware('throttle:password-update');
+    Route::get('/setup', [Admin\SetupController::class, 'index']);
+    Route::post('/waivers', [Admin\SetupController::class, 'storeWaiver']);
     Route::get('/lesson-types', [Admin\LessonTypeController::class, 'index']);
+    Route::post('/lesson-types', [Admin\LessonTypeController::class, 'store']);
     Route::patch('/lesson-types/{lessonType}', [Admin\LessonTypeController::class, 'update']);
     Route::apiResource('horses', Admin\HorseController::class)->except('show');
     Route::apiResource('customers', Admin\CustomerController::class)->only('index', 'store', 'update');

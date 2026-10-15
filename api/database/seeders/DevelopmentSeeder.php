@@ -13,6 +13,7 @@ class DevelopmentSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(ReferenceDataSeeder::class);
         $now = now();
         $insert = fn (string $table, array $rows) => DB::table($table)->insert(array_map(
             fn ($row) => $row + ['created_at' => $now] + ($table === 'horse_lesson_types' ? [] : ['updated_at' => $now]),

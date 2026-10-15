@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\DB;
  * two can never disagree (port of Postgres available_horse_ids). Times are
  * naive "Y-m-d H:i:s" wall-time strings, which compare correctly as strings.
  *
- * A horse is free for [start, end) when it is active and not deleted, is
- * eligible for the lesson type, has an active weekly window on that weekday
+ * A horse is free for [start, end) when it is active and not deleted, has
+ * an active weekly window on that weekday
  * covering the whole lesson, has no horse block overlapping it, and is not in
  * booking_horses for an overlapping pending/confirmed booking. Never exposed
  * to clients (horse IDs are internal).
@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 final class HorseAvailability
 {
     /**
-     * @param  list<string>  $horseIds  eligible active horses, sorted
+     * @param  list<string>  $horseIds  active horses, sorted
      * @param  array<string, list<array{0:string,1:string}>>  $windows  per horse
      * @param  array<string, list<array{0:string,1:string}>>  $blocks  per horse
      * @param  array<string, list<array{0:string,1:string}>>  $bookings  per horse
@@ -44,10 +44,6 @@ final class HorseAvailability
         $horseIds = DB::table('horses')
             ->where('active', true)
             ->whereNull('deleted_at')
-            ->whereExists(fn ($q) => $q->from('horse_lesson_types')
-                ->whereColumn('horse_lesson_types.horse_id', 'horses.id')
-                ->where('lesson_type_id', $lessonTypeId)
-                ->where('eligible', true))
             ->pluck('id')
             ->all();
         sort($horseIds, SORT_STRING);
@@ -102,7 +98,7 @@ final class HorseAvailability
         return new self($date, $horseIds, $windows, $blocks, $bookings);
     }
 
-    /** Free eligible horses for [$start, $end), in ID order. */
+    /** Free active horses for [$start, $end), in ID order. */
     public static function for(string $lessonTypeId, string $start, string $end): array
     {
         return self::load($lessonTypeId, substr($start, 0, 10), $start, $end)->freeHorseIds($start, $end);

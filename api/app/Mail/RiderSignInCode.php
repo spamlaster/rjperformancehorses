@@ -12,7 +12,7 @@ class RiderSignInCode extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Your RJ Performance Horses sign-in code');
+        return new Envelope(subject: 'Your RJ Performance Horses email verification code');
     }
 
     public function content(): Content

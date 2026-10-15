@@ -46,6 +46,8 @@
         >
           Availability
         </router-link>
+        <RouterLink to="/admin/lesson-types" class="block px-4 py-2 rounded-md" :class="isActive('/admin/lesson-types') ? 'bg-accent-gold text-white' : 'text-text-dark hover:bg-gray-100'">Lesson Types</RouterLink>
+        <RouterLink to="/admin/setup" class="block px-4 py-2 rounded-md" :class="isActive('/admin/setup') ? 'bg-accent-gold text-white' : 'text-text-dark hover:bg-gray-100'">Setup</RouterLink>
         <router-link to="/admin/account" class="block px-4 py-2 rounded-md transition-colors"
           :class="isActive('/admin/account') ? 'bg-accent-gold text-white' : 'text-text-dark hover:bg-gray-100'">
           Account Settings
@@ -64,7 +66,7 @@
     </aside>
 
     <!-- Main Content -->
-    <div class="flex-1 flex flex-col">
+    <div class="flex-1 min-w-0 flex flex-col">
       <!-- Mobile Header -->
       <div class="md:hidden flex items-center justify-between px-4 py-4 bg-white border-b border-border-light">
         <router-link to="/admin/dashboard" class="font-serif text-lg font-bold text-text-dark">
@@ -78,10 +80,10 @@
         </button>
       </div>
 
-      <div class="md:hidden px-4 py-2 bg-white border-b border-border-light">
-        <router-link to="/admin/account" class="text-sm font-semibold text-dark-brown underline">Account Settings</router-link>
-        <router-link v-if="route.path === '/admin/account'" to="/admin/dashboard" class="text-sm ml-4 underline">Back to Dashboard</router-link>
-      </div>
+      <nav aria-label="Admin navigation" class="md:hidden flex flex-wrap gap-2 px-4 py-3 bg-white border-b border-border-light">
+        <RouterLink v-for="item in mobileLinks" :key="item.path" :to="item.path" class="px-3 py-2 rounded-md text-sm font-semibold"
+          :class="isActive(item.path) ? 'bg-accent-gold text-white' : 'bg-gray-100 text-dark-brown'">{{ item.label }}</RouterLink>
+      </nav>
 
       <!-- Content -->
       <main class="flex-1 p-4 md:p-8 overflow-auto">
@@ -102,6 +104,16 @@ const router = useRouter()
 const authStore = useAuthStore()
 const adminStore = useAdminStore()
 
+const mobileLinks = [
+  { path: '/admin/dashboard', label: 'Dashboard' },
+  { path: '/admin/bookings', label: 'Bookings' },
+  { path: '/admin/riders', label: 'Riders' },
+  { path: '/admin/horses', label: 'Horses' },
+  { path: '/admin/availability', label: 'Availability' },
+  { path: '/admin/lesson-types', label: 'Lesson Types' },
+  { path: '/admin/setup', label: 'Setup' },
+  { path: '/admin/account', label: 'Account Settings' },
+]
 const dataLoaded = ref(false)
 
 // Load admin data once when entering admin area

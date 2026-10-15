@@ -40,6 +40,7 @@
       <div v-show="currentStep === 0">
         <h2 class="text-2xl font-serif font-bold mb-4">Select a Lesson</h2>
         <p class="text-light-brown mb-4">Reserve a weekly lesson. Your day and time stay yours until you cancel.</p>
+        <p v-if="!lessonTypes.length" class="text-light-brown">Online booking is not available yet. <RouterLink to="/contact" class="underline">Contact us to arrange a lesson</RouterLink>.</p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <button
             v-for="lesson in lessonTypes"
@@ -104,7 +105,7 @@
       <!-- Step 2: Contact & Rider Information -->
       <div v-show="currentStep === 2">
         <h2 class="text-2xl font-serif font-bold mb-6">Contact & Rider Information</h2>
-        <p v-if="!savedAccount" class="mb-4 text-light-brown"><router-link to="/rider/sign-in?returnTo=/book" class="underline font-semibold">Sign in or create a rider account</router-link> to reuse your saved riders.</p>
+        <p v-if="!savedAccount" class="mb-4 text-light-brown"><router-link to="/rider/sign-in?returnTo=/book" class="underline font-semibold">Sign in or create a rider account</router-link> to reuse your saved riders. A parent or adult rider must sign in before reserving a lesson. New accounts verify their email once; returning users only need their password.</p>
 
         <!-- Customer Information Section -->
         <div class="mb-8">
@@ -134,6 +135,7 @@
               <label class="form-label">Email *</label>
               <input
                 v-model="customerInfo.email"
+                :readonly="!!savedAccount"
                 type="email"
                 class="form-input"
                 placeholder="john@example.com"
@@ -151,6 +153,8 @@
             </div>
           </div>
         </div>
+
+        <p class="text-sm text-light-brown mb-4">Booking for a child? Keep your own contact details above, then enter the child’s name and birth date below. Their rider profile is saved under your account for next time.</p>
 
         <!-- Riders Information Section -->
         <div>
@@ -205,15 +209,24 @@
                   required
                 />
               </div>
-              <div v-if="!rider.id" class="md:col-span-2">
-                <label class="form-label">Date of Birth *</label>
+              <div class="md:col-span-2">
+                <label :for="`rider-birthday-${index}`" class="form-label">Date of Birth *</label>
                 <input
+                  :id="`rider-birthday-${index}`"
                   :value="rider.dateOfBirth"
+                  min="1900-01-01"
+                  :max="bookingStore.businessDate"
+                  :readonly="!!rider.id && !!savedAccount?.riders.find(saved => saved.id === rider.id)?.date_of_birth"
+                  :aria-invalid="!!rider.dateOfBirth && !!birthdayError(rider.dateOfBirth, bookingStore.businessDate)"
+                  :aria-describedby="`rider-birthday-help-${index}`"
                   @input="updateRider(index, { dateOfBirth: ($event.target as HTMLInputElement).value })"
                   type="date"
                   class="form-input"
                   required
                 />
+                <p :id="`rider-birthday-help-${index}`" class="text-sm mt-2" :class="rider.dateOfBirth && birthdayError(rider.dateOfBirth, bookingStore.businessDate) ? 'text-red-700' : 'text-light-brown'">
+                  {{ rider.dateOfBirth && birthdayError(rider.dateOfBirth, bookingStore.businessDate) ? birthdayError(rider.dateOfBirth, bookingStore.businessDate) : 'Enter the rider’s actual birth date and four-digit birth year. This determines who can sign the waiver.' }}
+                </p>
               </div>
             </div>
 
@@ -294,10 +307,11 @@
                   <label :for="`waiver-capacity-${index}`" class="form-label">I am signing as</label>
                   <select :id="`waiver-capacity-${index}`" v-model="signature.relationship_to_rider" class="form-select" @change="signature.accepted = false; signature.authorized = false">
                     <option value="">Choose your relationship</option>
-                    <option v-if="!isMinor(index)" value="self">The rider (18 or older)</option>
+                    <option value="self" :disabled="isMinor(index)">Myself — I am the rider (18 or older)</option>
                     <option value="parent">Parent</option>
                     <option value="legal_guardian">Legal guardian</option>
                   </select>
+                  <p v-if="isMinor(index)" class="text-sm text-light-brown mt-2">“Myself” means the rider is signing for themselves. This rider is under 18 based on their date of birth. A parent or legal guardian must sign. Check the birth year under Edit Information. Contact Rylie if a saved profile needs correcting.</p>
                 </div>
                 <div>
                   <label :for="`waiver-name-${index}`" class="form-label">Type your full name to sign</label>
@@ -385,6 +399,11 @@
       </div>
     </div>
 
+    <div v-if="bookingError && currentStep !== 4" ref="bookingErrorPanel" tabindex="-1" class="px-6 md:px-8 pb-6 space-y-4">
+      <p role="alert" class="text-red-700">{{ bookingError }}</p>
+      <RouterLink v-if="bookingError.startsWith('Sign in')" to="/rider/sign-in?returnTo=/book" class="btn-primary inline-block">Sign in to continue</RouterLink>
+    </div>
+
     <!-- Navigation -->
     <div class="px-6 md:px-8 py-6 bg-gray-50 border-t border-border-light flex justify-between items-center gap-4">
       <div class="text-sm text-light-brown">
@@ -422,13 +441,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch, nextTick } from 'vue'
 import { fetchCurrentWaiver, type WaiverDocument, type WaiverSignature } from '@/services/waiverService'
 import { loadRiderAccount, type RiderAccount } from '@/services/riderAccountService'
 import { useBookingStore } from '@/stores/bookingStore'
 import { fetchLessonTypes, fetchBusinessTimezone } from '@/services/apiService'
 import { getBookableSlots, formatTimeForDisplay, type BookableSlot } from '@/services/availabilityService'
 import { createGuestBooking } from '@/services/guestBookingService'
+import { birthdayError, currentDateInTimezone, riderIsMinor } from '@/utils/riderBirthday'
 import type { LessonType } from '@/types/models'
 import { format, parseISO } from 'date-fns'
 
@@ -440,7 +460,9 @@ const waiverLoading = ref(false)
 const waiverError = ref('')
 const waiverReady = computed(() => !!waiverDocument.value && !waiverLoading.value && !waiverError.value
   && waiverSignatures.value.length === riders.value.length
-  && waiverSignatures.value.every(s => s.signer_name.trim().length >= 2 && s.relationship_to_rider && s.accepted && s.authorized))
+  && waiverSignatures.value.every((s, i) => s.signer_name.trim().length >= 2 && s.relationship_to_rider && s.accepted && s.authorized
+    && !birthdayError(riders.value[i]?.dateOfBirth, waiverDocument.value?.current_date || bookingStore.businessDate)
+    && !(s.relationship_to_rider === 'self' && isMinor(i))))
 function clearSignatures() {
   waiverSignatures.value = riders.value.map(() => ({ signer_name: '', relationship_to_rider: '', accepted: false, authorized: false }))
 }
@@ -458,13 +480,7 @@ async function loadWaiver() {
   }
 }
 function isMinor(index: number) {
-  const birthday = riders.value[index]?.dateOfBirth
-  if (!birthday || !waiverDocument.value) return false
-  const today = parseISO(waiverDocument.value.current_date)
-  const birth = parseISO(birthday)
-  let age = today.getFullYear() - birth.getFullYear()
-  if (today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age--
-  return age < 18
+  return riderIsMinor(riders.value[index]?.dateOfBirth, waiverDocument.value?.current_date || bookingStore.businessDate)
 }
 const lessonTypes = ref<LessonType[]>([])
 const businessTimezone = ref('')
@@ -474,6 +490,13 @@ const availabilityError = ref('')
 const submittingBooking = ref(false)
 const bookingSuccess = ref(false)
 const bookingError = ref('')
+const bookingErrorPanel = ref<HTMLElement | null>(null)
+watch(bookingError, async message => {
+  if (!message) return
+  await nextTick()
+  bookingErrorPanel.value?.focus()
+  bookingErrorPanel.value?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+})
 const managementLink = ref('')
 const copyNotice = ref('')
 let requestId = 0
@@ -517,6 +540,10 @@ async function loadSlots() {
 async function submitBooking() {
   if (!waiverReady.value || !waiverDocument.value) {
     bookingError.value = 'Read and sign the waiver for every rider before booking.'
+    return
+  }
+  if (!savedAccount.value) {
+    bookingError.value = 'Sign in to finish booking.'
     return
   }
   submittingBooking.value = true
@@ -569,7 +596,7 @@ async function submitBooking() {
     })
 
     if (result.success && result.bookingId) {
-      managementLink.value = result.managementToken ? `${window.location.origin}/reservation#${result.managementToken}` : ''
+      managementLink.value = result.managementToken ? `${window.location.origin}/rider/sign-in#${result.managementToken}` : ''
       bookingStore.setBookingConfirmed(result.bookingId)
       bookingSuccess.value = true
       bookingStore.setStep(4)
@@ -674,19 +701,10 @@ onMounted(async () => {
     // Guest booking remains available if account loading fails.
   }
   const availableLessons = await fetchLessonTypes(true)
-  // Keep the existing lesson ID for availability and booking requests.
-  const combinedLesson = availableLessons.find(lesson => lesson.name === 'Barrel Racing & Pole Bending')
-    || availableLessons.find(lesson => lesson.name === 'Barrel Racing')
-    || availableLessons.find(lesson => lesson.name === 'Pole Bending')
   lessonTypes.value = availableLessons
-    .filter(lesson => !['Weekly Barrel Training', 'Extended Group Lesson'].includes(lesson.name))
-    .filter(lesson => !['Barrel Racing', 'Pole Bending', 'Barrel Racing & Pole Bending'].includes(lesson.name) || lesson === combinedLesson)
-    .map(lesson => lesson === combinedLesson ? {
-      ...lesson,
-      name: 'Barrel Racing & Pole Bending',
-      description: 'Specialized training in barrel racing, pole bending patterns, and speed control.',
-    } : lesson)
-  businessTimezone.value = (await fetchBusinessTimezone()) || 'business local time'
+  const zone = await fetchBusinessTimezone()
+  businessTimezone.value = zone || 'business local time'
+  bookingStore.businessDate = currentDateInTimezone(zone || undefined)
 })
 
 const selectLesson = (lesson: LessonType) => bookingStore.setLessonType(lesson)

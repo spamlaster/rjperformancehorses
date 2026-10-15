@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Models\BusinessConfig;
 use App\Models\LessonType;
 use App\Services\WaiverService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -11,6 +13,13 @@ use Illuminate\Validation\Validator;
 class StoreGuestBookingRequest extends FormRequest
 {
     private const DATETIME = 'date_format:Y-m-d\TH:i:s,Y-m-d H:i:s,Y-m-d\TH:i';
+
+    public function authorize(): bool
+    {
+        $user = $this->user();
+
+        return $user && $user->is_active && $user->role === null && $user->email_verified_at !== null;
+    }
 
     public function rules(): array
     {
@@ -26,7 +35,7 @@ class StoreGuestBookingRequest extends FormRequest
             'riders.*.id' => ['nullable', 'string', 'max:36'],
             'riders.*.first_name' => ['required', 'string', 'max:100'],
             'riders.*.last_name' => ['required', 'string', 'max:100'],
-            'riders.*.date_of_birth' => ['nullable', 'date_format:Y-m-d'],
+            'riders.*.date_of_birth' => ['required', 'date_format:Y-m-d', 'after_or_equal:1900-01-01', 'before_or_equal:'.CarbonImmutable::now(BusinessConfig::timezone())->toDateString()],
             ...WaiverService::rules(),
         ];
     }
@@ -38,6 +47,10 @@ class StoreGuestBookingRequest extends FormRequest
             'start_time.required' => 'Missing required booking parameters',
             'end_time.required' => 'Missing required booking parameters',
             'customer.email.required' => 'Customer email is required',
+            'riders.*.date_of_birth.required' => 'Enter a date of birth for every rider.',
+            'riders.*.date_of_birth.date_format' => 'Enter a valid date of birth using a four-digit birth year.',
+            'riders.*.date_of_birth.before_or_equal' => 'Date of birth cannot be in the future.',
+            'riders.*.date_of_birth.after_or_equal' => 'Enter a birth year of 1900 or later.',
         ];
     }
 

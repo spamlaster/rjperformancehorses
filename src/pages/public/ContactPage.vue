@@ -9,31 +9,6 @@
           Have questions? We'd love to hear from you.
         </p>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          <div class="text-center">
-            <div class="text-3xl mb-3">📧</div>
-            <h3 class="font-bold mb-2">Email</h3>
-            <a href="mailto:info@rjperformancehorses.com" class="text-accent-gold hover:text-warm-gold">
-              info@rjperformancehorses.com
-            </a>
-          </div>
-          <div class="text-center">
-            <div class="text-3xl mb-3">📞</div>
-            <h3 class="font-bold mb-2">Phone</h3>
-            <a href="tel:+15551234567" class="text-accent-gold hover:text-warm-gold">
-              (555) 123-4567
-            </a>
-          </div>
-          <div class="text-center">
-            <div class="text-3xl mb-3">📍</div>
-            <h3 class="font-bold mb-2">Visit</h3>
-            <p class="text-light-brown">
-              Horse Ranch<br />
-              Town, State
-            </p>
-          </div>
-        </div>
-
         <!-- Contact Form -->
         <div class="card card-padding">
           <h2 class="text-2xl font-serif font-bold text-text-dark mb-6">Send us a Message</h2>
@@ -101,7 +76,6 @@ const form = ref({
 const submitted = ref(false)
 
 const submitForm = () => {
-  console.log('Form submitted:', form.value)
   submitted.value = true
   form.value = { name: '', email: '', subject: '', message: '' }
   setTimeout(() => {

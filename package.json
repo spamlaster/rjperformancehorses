@@ -10,13 +10,14 @@
     "type-check": "vue-tsc --noEmit",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "api": "cd api && PHP_CLI_SERVER_WORKERS=4 php artisan serve --host=127.0.0.1 --port=8000",
-    "db:reset": "cd api && php artisan migrate:fresh --seed",
+    "db:reset": "cd api && php artisan app:fresh",
     "test:api": "cd api && php artisan test",
     "test:browser": "node tests/browser.mjs",
     "test:weekly": "node tests/weekly-browser.mjs",
     "test:admin": "node tests/admin-browser.mjs",
     "test:riders": "node tests/riders-browser.mjs",
-    "test": "npm run test:api && npm run test:browser && npm run test:admin && npm run test:riders"
+    "test:browser:all": "node tests/run-browser.mjs",
+    "test": "npm run test:api && npm run test:browser:all && npm run test:weekly"
   },
   "dependencies": {
     "date-fns": "^2.30.0",

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Services\AvailabilityService;
 use App\Services\HorseAvailability;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,11 +41,12 @@ class AvailabilityTest extends TestCase
 
     public function test_horse_rules(): void
     {
-        $this->assertCount(5, $this->starts(), '08 eligible active horse');
+        $this->assertCount(5, $this->starts(), 'active horse with shared hours');
 
         DB::table('horse_lesson_types')->where('id', 'test-e-test-h1')->update(['eligible' => false]);
-        $this->assertSame([], $this->starts(), '09 no eligible horse');
-        DB::table('horse_lesson_types')->where('id', 'test-e-test-h1')->update(['eligible' => true]);
+        $this->assertCount(5, $this->starts(), 'legacy lesson eligibility does not gate availability');
+        DB::table('horse_lesson_types')->delete();
+        $this->assertCount(5, $this->starts(), 'horse hours work without lesson eligibility setup');
 
         $this->setActive('horses', ['test-h1'], false);
         $this->assertSame([], $this->starts(), '10 inactive horse excluded');
@@ -125,7 +127,7 @@ class AvailabilityTest extends TestCase
         $this->assertSame([], $this->starts(null, 'not-a-uuid-or-id'), '31 invalid lesson safe');
 
         DB::table('lesson_types')->where('id', 'test-lesson')->update(['active' => true, 'duration_minutes' => 90]);
-        $slots = app(\App\Services\AvailabilityService::class)->bookableSlots('test-lesson', $this->date);
+        $slots = app(AvailabilityService::class)->bookableSlots('test-lesson', $this->date);
         $this->assertSame('10:30', collect($slots)->firstWhere('start_time', '09:00')['end_time'], '32 duration respected');
 
         DB::table('lesson_types')->where('id', 'test-lesson')->update(['duration_minutes' => 60]);

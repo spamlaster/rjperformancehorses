@@ -6,12 +6,9 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Local development: reference data plus fictional sample data.
-     * Production runs only ReferenceDataSeeder.
-     */
+    /** Fresh installs include the standard lesson catalog. Demo records are opt-in. */
     public function run(): void
     {
-        $this->call([ReferenceDataSeeder::class, DevelopmentSeeder::class]);
+        $this->call(DefaultLessonTypesSeeder::class);
     }
 }

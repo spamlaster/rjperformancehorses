@@ -1,8 +1,8 @@
 /**
- * Guest Booking Service
+ * Rider Booking Service
  *
  * Handles creating real bookings through the Laravel API (POST /api/bookings/guest).
- * This is the ONLY way guests can create bookings; all other writes require an admin session.
+ * A verified rider account session is required to create a booking.
  */
 
 import { api } from '@/lib/api'
@@ -52,7 +52,7 @@ export interface GuestBookingResult {
  */
 export async function createGuestBooking(payload: GuestBookingPayload): Promise<GuestBookingResult> {
   try {
-    const { data, error } = await api<{ success: boolean; booking_id: string; customer_id: string; recurring_lesson_id: string; management_token: string; message: string }>('POST', '/bookings/guest', {
+    const { data, error, status } = await api<{ success: boolean; booking_id: string; customer_id: string; recurring_lesson_id: string; management_token: string; message: string }>('POST', '/bookings/guest', {
       waiver: payload.waiver,
       lesson_type_id: payload.lessonTypeId,
       start_time: payload.startTime,
@@ -72,10 +72,10 @@ export async function createGuestBooking(payload: GuestBookingPayload): Promise<
     })
 
     if (error || !data) {
-      console.error('Guest booking error:', error)
+      if (status !== 422) console.error('Guest booking error:', error)
       return {
         success: false,
-        error: error || 'Failed to create booking',
+        error: status === 401 || status === 403 ? 'Sign in to finish booking.' : error || 'Failed to create booking',
       }
     }
 

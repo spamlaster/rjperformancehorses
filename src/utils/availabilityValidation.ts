@@ -17,7 +17,7 @@ export function isValidTimeWindow(window: TimeWindow): boolean {
   }
 
   // Compare HH:MM strings lexicographically (works because format is fixed)
-  return window.startTime < window.endTime
+  return window.startTime.slice(0, 5) < window.endTime.slice(0, 5)
 }
 
 /**
@@ -32,7 +32,7 @@ export function windowsOverlap(window1: TimeWindow, window2: TimeWindow): boolea
 
   // Check if one starts before the other ends
   // window1.end > window2.start AND window2.end > window1.start
-  return window1.endTime > window2.startTime && window2.endTime > window1.startTime
+  return window1.endTime.slice(0, 5) > window2.startTime.slice(0, 5) && window2.endTime.slice(0, 5) > window1.startTime.slice(0, 5)
 }
 
 /**
@@ -67,11 +67,11 @@ export function validateNewWindow(
  * Format time for display (HH:MM -> h:MM AM/PM)
  */
 export function formatTime(timeStr: string): string {
-  if (!timeStr || timeStr.length !== 5) {
+  if (!timeStr || !/^\d{2}:\d{2}(:\d{2})?$/.test(timeStr)) {
     return timeStr
   }
 
-  const [hours, minutes] = timeStr.split(':').map(Number)
+  const [hours, minutes] = timeStr.slice(0, 5).split(':').map(Number)
   const ampm = hours >= 12 ? 'PM' : 'AM'
   const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours
 

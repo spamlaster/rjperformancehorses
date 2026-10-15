@@ -109,6 +109,7 @@ export const mockRiders: Rider[] = [
 
 export const mockLessonTypes: LessonType[] = [
   {
+    active: true,
     id: 'lesson-1',
     name: 'Walk & Trot',
     description: 'Perfect for first-time riders. Learn basics of saddle, posture, and horse handling.',
@@ -122,6 +123,7 @@ export const mockLessonTypes: LessonType[] = [
     updatedAt: new Date().toISOString(),
   },
   {
+    active: true,
     id: 'lesson-2',
     name: 'Intermediate Riding',
     description: 'Build on fundamentals with canter and basic jumping.',
@@ -135,6 +137,7 @@ export const mockLessonTypes: LessonType[] = [
     updatedAt: new Date().toISOString(),
   },
   {
+    active: true,
     id: 'lesson-3',
     name: 'Advanced Horsemanship',
     description: 'Advanced techniques and competition preparation.',
@@ -148,6 +151,7 @@ export const mockLessonTypes: LessonType[] = [
     updatedAt: new Date().toISOString(),
   },
   {
+    active: true,
     id: 'lesson-4',
     name: 'Sibling/Joined Lesson',
     description: 'Two riders learning together on separate horses.',
@@ -161,6 +165,7 @@ export const mockLessonTypes: LessonType[] = [
     updatedAt: new Date().toISOString(),
   },
   {
+    active: true,
     id: 'lesson-5',
     name: 'Barrel Racing',
     description: 'Specialized training for barrel racing techniques.',
@@ -174,6 +179,7 @@ export const mockLessonTypes: LessonType[] = [
     updatedAt: new Date().toISOString(),
   },
   {
+    active: true,
     id: 'lesson-6',
     name: 'Pole Bending',
     description: 'Learn precise weaving patterns and speed control.',

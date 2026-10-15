@@ -4,7 +4,7 @@
       <!-- Header -->
       <div>
         <h1 class="text-3xl font-serif font-bold text-text-dark">Dashboard</h1>
-        <p class="text-light-brown">Welcome back, Rylie!</p>
+        <p class="text-light-brown">Manage your lessons and ranch schedule.</p>
       </div>
 
       <!-- Loading State -->
@@ -20,6 +20,9 @@
 
       <!-- Main Content -->
       <template v-else>
+
+        <SetupChecklist v-if="setup && (!setup.lesson_count || !setup.horse_count || !setup.instructor_hours || !setup.horse_hours || !setup.waiver)" :status="setup" />
+        <p v-if="setupError" role="alert" class="text-red-700">{{ setupError }} <RouterLink to="/admin/setup" class="underline">Open Setup</RouterLink></p>
 
         <!-- Quick Stats -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -122,11 +125,19 @@ import { computed, ref, onMounted } from 'vue'
 import { format, parseISO, isToday } from 'date-fns'
 import AdminLayout from '@/components/layouts/AdminLayout.vue'
 import { useAdminStore } from '@/stores/adminStore'
+import SetupChecklist from '@/components/admin/SetupChecklist.vue'
+import { fetchSetupStatus, type SetupStatus } from '@/services/setupService'
 import BookingCalendar from '@/components/admin/BookingCalendar.vue'
 import { fetchWeeklyReservations, type WeeklyReservation } from '@/services/reservationService'
 import { fetchBusinessTimezone } from '@/services/apiService'
 
 const adminStore = useAdminStore()
+const setup = ref<SetupStatus | null>(null)
+const setupError = ref('')
+onMounted(async () => {
+  try { setup.value = await fetchSetupStatus() }
+  catch (err) { setupError.value = err instanceof Error ? err.message : 'Unable to load setup.' }
+})
 const weeklyReservations = ref<WeeklyReservation[]>([])
 const calendarTimezone = ref('America/Denver')
 const calendarLoading = ref(true)

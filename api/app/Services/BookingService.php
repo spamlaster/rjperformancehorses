@@ -72,12 +72,20 @@ class BookingService
                 throw ValidationException::withMessages(['customer.email' => 'Sign in to book with your existing rider account.']);
             }
 
+            if ($user && $user->role === null) {
+                $customer->update([
+                    'first_name' => $data['customer']['first_name'],
+                    'last_name' => $data['customer']['last_name'],
+                    'phone' => $data['customer']['phone'] ?? null,
+                ]);
+            }
+
             $riderIds = [];
             foreach ($data['riders'] as $input) {
                 if (! empty($input['id']) && (! $user || $user->role !== null)) {
                     throw ValidationException::withMessages(['riders' => 'Sign in to book with a saved rider.']);
                 }
-                $riderIds[] = app(RiderIdentityService::class)->findOrCreate($customer, $input)->id;
+                $riderIds[] = app(RiderIdentityService::class)->findOrCreate($customer, $input, allowNewPersonWithSameName: false)->id;
             }
 
             if (count(array_unique($riderIds)) !== count($riderIds)) {

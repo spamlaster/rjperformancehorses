@@ -24,7 +24,7 @@
             <h2 class="text-xl font-serif font-bold">Saved Riders</h2>
             <router-link to="/book" class="btn-primary">Book a Weekly Lesson</router-link>
           </div>
-          <p class="text-light-brown">Create each rider once, then choose their saved profile whenever you book. Add yourself or each child who rides.</p>
+          <p class="text-light-brown">Add yourself or a child below. Each child is saved under your account and does not need an email address or a separate login. Choose their saved profile whenever you book.</p>
           <ul class="space-y-2">
             <li v-for="rider in account.riders" :key="rider.id" class="border border-border-light rounded p-3">
               <p class="font-bold">{{ rider.first_name }} {{ rider.last_name }}</p>
@@ -32,7 +32,7 @@
             </li>
           </ul>
           <form @submit.prevent="addRider" class="border-t border-border-light pt-4 space-y-4">
-            <h3 class="font-bold">Create Rider Profile</h3>
+            <h3 class="font-bold">Add a Rider</h3>
             <div class="grid md:grid-cols-3 gap-4">
               <div><label for="rider-first" class="form-label">Rider first name</label><input id="rider-first" v-model="newRider.first_name" class="form-input" required /></div>
               <div><label for="rider-last" class="form-label">Rider last name</label><input id="rider-last" v-model="newRider.last_name" class="form-input" required /></div>

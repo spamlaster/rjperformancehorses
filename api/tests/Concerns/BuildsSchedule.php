@@ -4,8 +4,10 @@ namespace Tests\Concerns;
 
 use App\Services\AvailabilityService;
 use App\Services\BookingService;
+use App\Services\RiderAccountService;
 use App\Services\WaiverService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\TestResponse;
 
 /**
  * Fixture from tests/availability.sql: one 60-minute lesson, three eligible
@@ -29,6 +31,15 @@ trait BuildsSchedule
             DB::table('horse_recurring_availability')->insert(['id' => "test-a-{$id}", 'horse_id' => $id, 'day_of_week' => $dow, 'start_time' => '09:00', 'end_time' => '12:00', 'active' => true, 'created_at' => $now, 'updated_at' => $now]);
         }
         DB::table('instructor_availability')->insert(['id' => 'test-i', 'day_of_week' => $dow, 'start_time' => '09:00', 'end_time' => '12:00', 'active' => true, 'created_at' => $now, 'updated_at' => $now]);
+    }
+
+    protected function postRiderBooking(array $payload): TestResponse
+    {
+        if (! auth()->user()) {
+            $this->actingAs(app(RiderAccountService::class)->signIn($payload['customer']['email'] ?? 'booking@example.com'));
+        }
+
+        return $this->postJson('/api/bookings/guest', $payload);
     }
 
     /** @return list<string> start times offered */

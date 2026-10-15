@@ -3,10 +3,14 @@
     <section class="py-16 md:py-24 border-b border-border-light">
       <div class="container-narrow">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-          <!-- Image Placeholder -->
-          <div class="bg-accent-gold rounded-lg h-96 flex items-center justify-center text-white text-6xl">
-            📸
-          </div>
+          <img
+            src="/images/rylie-profile.jpg"
+            alt="Rylie Jensen standing beside a saddled horse"
+            width="2048"
+            height="2048"
+            decoding="async"
+            class="w-full h-auto rounded-lg shadow-md"
+          />
 
           <!-- Content -->
           <div>
